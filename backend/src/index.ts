@@ -1,5 +1,5 @@
 import express, { Application, Request, Response } from 'express';
-import {clientRoutes, petRoutes,servicesRoutes} from './routes/index'
+import {clientRoutes, petRoutes,servicesRoutes} from './routes'
 
 const app: Application = express();
 const port = process.env.PORT || 3000;
