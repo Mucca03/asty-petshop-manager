@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+
+model client_phones {
+  id        Int     @id @default(autoincrement())
+  phone     String  @unique
+
+  client_id Int
+  clients   clients @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model clients {
+  id            Int             @id @default(autoincrement())
+  name          String
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+
+  client_phones client_phones[]
+  pets          pets[]
+}
+
+model pets {
+  id         Int        @id @default(autoincrement())
+  name       String
+  raza       String
+  client_id  Int
+  created_at DateTime?  @default(now()) @db.Timestamp(6)
+  clients    clients    @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  services   services[]
+}
+
+model services {
+  id           Int      @id @default(autoincrement())
+  service_type String
+  details      String?
+  price        Decimal  @db.Decimal(10, 2)
+  paid_amount  Decimal? @default(0) @db.Decimal(10, 2)
+  status       String
+  date         DateTime @db.Timestamp(6)
+  pet_id       Int
+  pets         pets     @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
