@@ -6,9 +6,10 @@ const createPet = async (name: string, raza: string, clientId: number)
         const {data} = await axios.post('/api/pets', {
             name: name,
             raza: raza,
-            id: clientId
+            client_id: clientId
         });
-        console.log('Pet added:', data.data);
+        console.log('Pet added:', data);
+
         return data
 };
 

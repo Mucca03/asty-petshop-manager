@@ -29,7 +29,11 @@ export const getClients =async (req: Request, res: Response) => {
     const get = await prisma.clients.findMany({
         include: {
             client_phones: true,
-            pets: true,
+            pets: {
+                include: {
+                    services: true,
+                }
+            }
         },
         orderBy: {
             id: "desc",

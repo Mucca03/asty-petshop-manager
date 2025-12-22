@@ -11,7 +11,7 @@ const createClient = async (name: string, phone: string)
                     phone
                 ]
             });
-        console.log('User added:', data.data);
+        console.log('User added:', data);
 
         return data;
 };
