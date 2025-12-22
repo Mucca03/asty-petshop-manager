@@ -1,12 +1,11 @@
 import axios from "axios";
 
-const postData = async () => {
+const createClient = async (name: string, phone: string) => {
     try {
             const newUser = {
-                name: 'Miguelito',
+                name: name,
                 phones: [
-                    "3155521",
-                    "1255524"
+                    phone
                 ]
             };
             const response = await axios.post('/api/clients', newUser);
@@ -16,4 +15,11 @@ const postData = async () => {
     }
 };
 
-export default postData;
+const getClient = async (id: number) => {
+    axios.get(`/api/clients/${id}`)
+        .then(response => {console.log(response.data)})
+        .catch(error => {console.log(error)})
+};
+
+
+export {createClient, getClient};
