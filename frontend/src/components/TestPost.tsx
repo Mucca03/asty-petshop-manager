@@ -24,10 +24,13 @@ const TestPost = () => {
 
     return (
         <div>
-
+            <p>Nombre cliente</p>
             <input ref={nameClient} type="text" id="nombre" name="nombre" placeholder="Escribe tu nombre"/>
+            <p>Telefono cliente</p>
             <input ref={phoneClient} type="text" id="telefono" name="telefono" placeholder="Escribe tu telefono"/>
+            <p>Nombre mascota</p>
             <input ref={namePet} type="text" id="nombrePet" name="nombrePet" placeholder="Escribe el nombre de la mascota"/>
+            <p>Raza mascota</p>
             <input ref={breedPet} type="text" id="razaPet" name="razaPet" placeholder="Escribe la raza de la mascota"/>
 
             <button onClick={(e) => handleSubmit(e)}>

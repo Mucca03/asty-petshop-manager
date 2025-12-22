@@ -4,8 +4,8 @@ const App = () => {
     return (
         <>
             <div>
-                <TestGet/>
                 <TestPost/>
+                <TestGet/>
             </div>
         </>
         )

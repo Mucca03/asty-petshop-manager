@@ -1,17 +1,15 @@
 import axios from "axios";
+import type {Pets} from "../types/Pets.ts";
 
-const createPet = async (name: string, raza: string, id: number) => {
-    try {
-        const newUser = {
+const createPet = async (name: string, raza: string, clientId: number)
+    :Promise<Pets>=> {
+        const {data} = await axios.post('/api/pets', {
             name: name,
             raza: raza,
-            client_id: id,
-        };
-        const response = await axios.post('/api/pets', newUser);
-        console.log('User added:', response.data);
-    } catch (error) {
-        console.error('Error adding user:', error);
-    }
+            id: clientId
+        });
+        console.log('Pet added:', data.data);
+        return data
 };
 
 export {createPet};
