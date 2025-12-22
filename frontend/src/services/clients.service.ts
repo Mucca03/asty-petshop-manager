@@ -1,18 +1,19 @@
 import axios from "axios";
+import type {Client} from "../types/Client.ts";
 
-const createClient = async (name: string, phone: string) => {
-    try {
-            const newUser = {
+const createClient = async (name: string, phone: string)
+    : Promise<Client> => {
+
+        const {data} = await axios.post('/api/clients',
+            {
                 name: name,
                 phones: [
                     phone
                 ]
-            };
-            const response = await axios.post('/api/clients', newUser);
-            console.log('User added:', response.data);
-        } catch (error) {
-            console.error('Error adding user:', error);
-    }
+            });
+        console.log('User added:', data.data);
+
+        return data;
 };
 
 const getClient = async (id: number) => {
