@@ -5,6 +5,28 @@ const TestGetClients = () => {
     interface Client {
         id: number;
         name: string;
+        client_phones: [
+            {
+                id: number;
+                phone: string;
+            }
+        ]
+        pets: [
+            {
+                id: number;
+                name: string;
+                raza: string;
+                services: [
+                    {
+                        service_type: string;
+                        details: string;
+                        price: number;
+                        paid_amount: number;
+                        status: string;
+                    }
+                    ]
+            }
+            ]
     }
 
     const [clients, setClients] = useState<Client[]>([]);
@@ -19,18 +41,7 @@ const TestGetClients = () => {
 
     return (
         <>
-            <div className="p-6 max-w-4xl mx-auto">
-                <h1 className="text-2xl font-bold mb-4">User List (using Axios)
-                </h1>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {clients.map(client => (
-                        <li key={client.id} className="bg-white shadow p-4 rounded-xl">
-                            <h2 className="text-lg font-semibold">{client.name}</h2>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-            {/*<table>
+            <table>
                 <thead>
                 <tr>
                     <th>Nombre cliente</th>
@@ -45,9 +56,28 @@ const TestGetClients = () => {
                 </tr>
                 </thead>
                 <tbody>
+                {clients.map(client => (
+                    client.client_phones.map(phone => (
+                        client.pets.map(pet => (
+                            pet.services.map(service => (
+                                <tr key={`${client.id}-${pet.id}-${phone.id}`}>
+                                    <td className="text-lg font-semibold">{client.name}</td>
+                                    <td className="text-lg font-semibold">{phone.phone}</td>
+                                    <td className="text-lg font-semibold">{pet.name}</td>
+                                    <td className="text-lg font-semibold">{pet.raza}</td>
+                                    <td className="text-lg font-semibold">{service.service_type}</td>
+                                    <td className="text-lg font-semibold">{service.details}</td>
+                                    <td className="text-lg font-semibold">{service.price}</td>
+                                    <td className="text-lg font-semibold">{service.paid_amount}</td>
+                                    <td className="text-lg font-semibold">{service.status}</td>
+                                </tr>
+                            ))
+                        ))
+                    ))
+                ))}
+
                 </tbody>
             </table>
-        */}
         </>
     )
 
