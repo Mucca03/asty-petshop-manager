@@ -12,18 +12,9 @@ const createService = async (service: string, details: string,
         status: status,
         pet_id: petId
     });
+    console.log('Service added:', data);
+
     return data
 };
 
 export {createService};
-
-/*
-{
-  "service_type": "Baño",
-  "details": "Baño completo con shampoo medicado",
-  "price": 35000.00,
-  "paid_amount": 15000.00,
-  "status": "pending",
-  "pet_id": 1
-}
- */
