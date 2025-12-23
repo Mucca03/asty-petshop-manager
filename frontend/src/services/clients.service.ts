@@ -16,8 +16,8 @@ const createClient = async (name: string, phone: string)
         return data;
 };
 
-const getClient = async (id: number) => {
-    axios.get(`/api/clients/${id}`)
+const getClient = async () => {
+    axios.get(`/api/clients`)
         .then(response => {console.log(response.data)})
         .catch(error => {console.log(error)})
 };
