@@ -9,7 +9,7 @@ const TestGet = () => {
     };
 
     return (
-        <>
+        <div>
         <button onClick={(e) => handleSubmit(e)}>
             Get User
         </button>
@@ -31,7 +31,7 @@ const TestGet = () => {
                 <tbody>
                 </tbody>
             </table>
-        </>
+        </div>
     )
 
 }

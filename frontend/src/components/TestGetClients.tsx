@@ -40,7 +40,7 @@ const TestGetClients = () => {
 
 
     return (
-        <>
+        <div>
             <table>
                 <thead>
                 <tr>
@@ -78,7 +78,7 @@ const TestGetClients = () => {
 
                 </tbody>
             </table>
-        </>
+        </div>
     )
 
 }

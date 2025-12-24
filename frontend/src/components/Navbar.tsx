@@ -1,18 +1,18 @@
 import { Link } from "react-router-dom";
+import "../index.css"
 
 const Navbar = () => {
+
     return(
         <nav className="navbar">
-            <div className="navbar-center">
-                <ul className="nav-links">
-                    <li>
+                <ul>
+                    <li className="item-list">
                         <Link to="/crearCliente">Crear Cliente</Link>
                     </li>
-                    <li>
+                    <li className="item-list">
                         <Link to="/verCliente">Ver Cliente</Link>
                     </li>
                 </ul>
-            </div>
         </nav>
     )
 }
