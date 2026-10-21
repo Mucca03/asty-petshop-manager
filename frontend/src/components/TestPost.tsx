@@ -1,74 +1,66 @@
 import {createClient, createPet, createService} from "../services/index.ts";
-import {useRef} from "react";
 
 const TestPost = () => {
 
-    const refs = {
-        nameClient: useRef<HTMLInputElement>(null),
-        phoneClient: useRef<HTMLInputElement>(null),
-        namePet: useRef<HTMLInputElement>(null),
-        breedPet: useRef<HTMLInputElement>(null),
-        serviceType: useRef<HTMLInputElement>(null),
-        details: useRef<HTMLInputElement>(null),
-        price: useRef<HTMLInputElement>(null),
-        paidAmount: useRef<HTMLInputElement>(null),
-        status: useRef<HTMLInputElement>(null),
-    };
-
-    const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const client = await createClient(
-            refs.nameClient.current?.value || "",
-            refs.phoneClient.current?.value || ""
-        );
+        const formData = new FormData(e.currentTarget);
+        const value = (name: string) => String(formData.get(name) ?? "").trim();
+        const numberValue = (name: string) => {
+            const number = Number(formData.get(name));
+            return Number.isFinite(number) ? number : 0;
+        };
+
+        const client = await createClient(value("nombre"), value("telefono"));
         const pet = await createPet(
-            refs.namePet.current?.value || "",
-            refs.breedPet.current?.value || "",
+            value("nombrePet"),
+            value("razaPet"),
             client.id
         )
         await createService(
-            refs.serviceType.current?.value || "",
-            refs.details.current?.value || "",
-            refs.price.current?.valueAsNumber  || 0,
-            refs.paidAmount.current?.valueAsNumber || 0,
-            refs.status.current?.value || "",
+            value("serviceType"),
+            value("details"),
+            numberValue("price"),
+            numberValue("paidAmount"),
+            value("status"),
             pet.id
         )
     };
 
     return (
         <div>
-            <form>
+            <form onSubmit={handleSubmit}>
                 <p>Nombre cliente</p>
-                <input ref={refs.nameClient} type="text" id="nombre" name="nombre"
+                <input type="text" id="nombre" name="nombre"
                        placeholder="Escribe tu nombre"/>
                 <p>Telefono cliente</p>
-                <input ref={refs.phoneClient} type="text" id="telefono" name="telefono"
+                <input type="text" id="telefono" name="telefono"
                        placeholder="Escribe tu telefono"/>
                 <p>Nombre mascota</p>
-                <input ref={refs.namePet} type="text" id="nombrePet" name="nombrePet"
+                <input type="text" id="nombrePet" name="nombrePet"
                        placeholder="Escribe el nombre de la mascota"/>
                 <p>Raza mascota</p>
-                <input ref={refs.breedPet} type="text" id="razaPet" name="razaPet"
+                <input type="text" id="razaPet" name="razaPet"
                        placeholder="Escribe la raza de la mascota"/>
                 <p>Tipo de servicio</p>
-                <input ref={refs.serviceType} type="text" id="serviceType" name="serviceType"
+                <input type="text" id="serviceType" name="serviceType"
                        placeholder="Tipo de servicio"/>
                 <p>Detalles</p>
-                <input ref={refs.details} type="text" id="details" name="details"
+                <input type="text" id="details" name="details"
                        placeholder="Escribe los Detalles"/>
                 <p>Price</p>
-                <input ref={refs.price} type="number" min={0} id="price" name="price"
+                <input type="number" min={0} id="price" name="price"
                        placeholder="Escribe el precio"/>
                 <p>Cantidad pagada</p>
-                <input ref={refs.paidAmount} type="number" min={0} id="paidAmount" name="paidAmount"
+                <input type="number" min={0} id="paidAmount" name="paidAmount"
                        placeholder="Escribe la cantidad pagada"/>
                 <p>Estado</p>
-                <input ref={refs.status} type="text" id="status" name="status"
+                <input type="text" id="status" name="status"
                        placeholder="Estado"/>
                 <br/>
-                <button onClick={(e) => handleSubmit(e)}>
-                    Add User</button>
+                <button type="submit">
+                    Guardar registro
+                </button>
             </form>
         </div>
     )

@@ -1,5 +1,6 @@
 import axios from "axios";
 import type {Client} from "../types/Client.ts";
+import type {ClientDetail} from "../types/ClientDetail.ts";
 
 const createClient = async (name: string, phone: string)
     : Promise<Client> => {
@@ -16,6 +17,11 @@ const createClient = async (name: string, phone: string)
         return data;
 };
 
+const getClients = async (): Promise<ClientDetail[]> => {
+    const {data} = await axios.get<ClientDetail[]>('/api/clients');
+    return data;
+};
+
 const getClient = async () => {
     axios.get(`/api/clients`)
         .then(response => {console.log(response.data)})
@@ -23,4 +29,4 @@ const getClient = async () => {
 };
 
 
-export {createClient, getClient};
+export {createClient, getClients, getClient};

@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import {TestGetClients, Navbar ,TestGet,TestPost} from "./components/index.ts";
+import {Dashboard, TestGetClients, Navbar, TestPost} from "./components/index.ts";
 import "./index.css"
 
 const App = () => {
@@ -8,6 +8,7 @@ const App = () => {
             <Navbar/>
             <main className="content">
                 <Routes>
+                    <Route path="/" element={<Dashboard />} />
                     <Route path="/crearCliente" element={<TestPost />} />
                     <Route path="/verCliente" element={<TestGetClients />} />
                 </Routes>
