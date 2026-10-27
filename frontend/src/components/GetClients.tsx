@@ -1,35 +1,30 @@
 import { useEffect, useState } from 'react';
 import axios from "axios";
 
-const TestGetClients = () => {
-    interface Client {
+export interface Client {
+    id: number;
+    name: string;
+    client_phones: {
+        id: number;
+        phone: string;
+    }[];
+    pets: {
         id: number;
         name: string;
-        client_phones: [
-            {
-                id: number;
-                phone: string;
-            }
-        ]
-        pets: [
-            {
-                id: number;
-                name: string;
-                raza: string;
-                services: [
-                    {
-                        service_type: string;
-                        details: string;
-                        price: number;
-                        paid_amount: number;
-                        status: string;
-                        date: string;
-                    }
-                    ]
-            }
-            ]
-    }
+        raza: string;
+        services: {
+            id: number;
+            service_type: string;
+            details: string;
+            price: number;
+            paid_amount: number;
+            status: string;
+            date: string;
+        }[];
+    }[];
+}
 
+const TestGetClients = () => {
     const [clients, setClients] = useState<Client[]>([]);
 
     useEffect(() => {

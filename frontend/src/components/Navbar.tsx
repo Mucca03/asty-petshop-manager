@@ -5,6 +5,7 @@ import "../index.css"
 const navItems = [
     { to: "/", label: "Panel", icon: HomeIcon, end: true },
     { to: "/verCliente", label: "Clientes", icon: UsersIcon, end: false },
+    { to: "/verClienteAdmin", label: "Clientes Admin", icon: UsersIcon, end: false },
     { to: "/crearCliente", label: "Nuevo registro", icon: UserPlusIcon, end: false },
 ];
 

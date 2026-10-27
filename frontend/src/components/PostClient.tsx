@@ -80,11 +80,6 @@ const TestPost = () => {
                 </>
                 )}
 
-                {/*
-                <input type="number" min={0} id="paidAmount" name="paidAmount"
-                  placeholder="Escribe la cantidad pagada" />
-                  */}
-
                 <p>Estado</p>
                 <input type="text" id="status" name="status"
                   placeholder="Pendiente"  value="Pendiente" />
