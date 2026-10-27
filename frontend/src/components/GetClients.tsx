@@ -23,6 +23,7 @@ const TestGetClients = () => {
                         price: number;
                         paid_amount: number;
                         status: string;
+                        date: string;
                     }
                     ]
             }
@@ -43,7 +44,8 @@ const TestGetClients = () => {
         <div>
             <table>
                 <thead>
-                <tr>
+                  <tr>
+                    <th>Fecha</th>
                     <th>Nombre cliente</th>
                     <th>Telefono</th>
                     <th>Nombre mascota</th>
@@ -59,8 +61,12 @@ const TestGetClients = () => {
                 {clients.map(client => (
                     client.client_phones.map(phone => (
                         client.pets.map(pet => (
-                            pet.services.map(service => (
+                            pet.services.sort((a, b) => {
+                                    // Ordena del más reciente al más antiguo
+                                    return new Date(b.date).getTime() - new Date(a.date).getTime();
+                                }).map(service => (
                                 <tr key={`${client.id}-${pet.id}-${phone.id}`}>
+                                    <td className="text-lg font-semibold">{new Date(service.date).toLocaleDateString()}</td>
                                     <td className="text-lg font-semibold">{client.name}</td>
                                     <td className="text-lg font-semibold">{phone.phone}</td>
                                     <td className="text-lg font-semibold">{pet.name}</td>
