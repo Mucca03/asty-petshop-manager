@@ -660,6 +660,29 @@ form > .message-banner {
     color: var(--color-accent);
 }
 
+.dash-filter-select,
+.dash-filter-date {
+    width: auto;
+    min-height: 40px;
+    padding: 9px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: #5c566f;
+    background: var(--color-surface);
+    box-shadow: 0 4px 12px rgba(63, 47, 217, 0.04);
+}
+
+.dash-filter-select {
+    padding-right: 34px;
+    cursor: pointer;
+}
+
+.dash-filter-date {
+    color-scheme: light;
+}
+
 .dash-btn {
     display: inline-flex;
     align-items: center;
@@ -804,6 +827,10 @@ form > .message-banner {
     align-items: start;
 }
 
+.dash-bottom-grid-single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .dash-card {
     min-width: 0;
     padding: 22px 24px;
@@ -860,6 +887,39 @@ form > .message-banner {
 .revenue-card {
     display: flex;
     flex-direction: column;
+}
+
+.revenue-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.revenue-visibility-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.7rem;
+    font-weight: 650;
+    white-space: nowrap;
+    color: var(--color-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.revenue-visibility-toggle input {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    box-shadow: none;
+    accent-color: var(--color-accent);
 }
 
 .revenue-trend {
@@ -953,6 +1013,41 @@ form > .message-banner {
 
 .revenue-metric-warning {
     color: #b45309;
+}
+
+.revenue-hidden-state {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 300px;
+    padding: 28px 20px;
+    border: 1px dashed #ddd6f3;
+    border-radius: 16px;
+    text-align: center;
+    color: var(--color-muted);
+    background: #fbfaff;
+}
+
+.revenue-hidden-state svg {
+    width: 34px;
+    height: 34px;
+    color: var(--color-accent);
+}
+
+.revenue-hidden-state p {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 750;
+    color: #332d42;
+}
+
+.revenue-hidden-state span {
+    max-width: 300px;
+    font-size: 0.76rem;
+    line-height: 1.5;
 }
 
 .bar-chart {
@@ -1097,11 +1192,137 @@ form > .message-banner {
     color: var(--color-muted);
 }
 
-/* Recent services */
-.recent-card,
-.top-clients-card {
+.status-services {
+    padding-top: 14px;
+    margin-top: 2px;
+    border-top: 1px solid #f1eefb;
+}
+
+.status-services-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 9px;
+    font-size: 0.66rem;
+    font-weight: 780;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.status-services-limit {
+    font-size: 0.63rem;
+    font-weight: 650;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.status-services-list {
     display: flex;
     flex-direction: column;
+    gap: 8px;
+    max-height: 250px;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.status-service-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 9px;
+    border: 1px solid #f1eefb;
+    border-radius: 11px;
+    background: #fbfaff;
+}
+
+.status-service-item .status-badge {
+    flex: 0 0 auto;
+    max-width: 112px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status-service-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.status-service-pet {
+    overflow: hidden;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #332d42;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-service-owner {
+    overflow: hidden;
+    font-size: 0.67rem;
+    color: var(--color-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-service-debt {
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    font-weight: 750;
+    white-space: nowrap;
+    color: #b45309;
+}
+
+/* Recent services */
+.recent-card,
+.top-clients-card,
+.pending-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.recent-card .dash-table {
+    min-width: 600px;
+}
+
+.recent-card .service-primary {
+    min-width: 128px;
+}
+
+.recent-card .service-detail {
+    max-width: 150px;
+}
+
+.pending-table {
+    min-width: 820px;
+}
+
+.pending-debt-cell {
+    color: #b45309;
+}
+
+.pending-complete-button {
+    justify-content: center;
+    min-width: 86px;
+    border: 0;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.pending-complete-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: none;
+}
+
+.pending-complete-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+    transform: none;
 }
 
 .dash-table-wrap {

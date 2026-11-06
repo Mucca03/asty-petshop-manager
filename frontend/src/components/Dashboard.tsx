@@ -1,8 +1,9 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
 import type {ReactNode} from "react";
 import {Link} from "react-router-dom";
-import {getClients} from "../services/index.ts";
+import {getClients, updateServiceStatus} from "../services/index.ts";
 import type {ClientDetail, PetRecord, ServiceRecord} from "../types/ClientDetail.ts";
+import {getServiceDebt} from "../utils/serviceDebt.ts";
 import {
     AlertTriangleIcon,
     ArrowUpRightIcon,
@@ -39,13 +40,6 @@ const shortDateFormatter = new Intl.DateTimeFormat("es-ES", {
 
 const monthFormatter = new Intl.DateTimeFormat("es-ES", {
     month: "short",
-});
-
-const todayFormatter = new Intl.DateTimeFormat("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
 });
 
 const statusColors = ["#6c63ff", "#ec4899", "#0ea5e9", "#f59e0b", "#14b8a6", "#ef4444"];
@@ -100,31 +94,158 @@ const getStatusColor = (index: number) => (
     statusColors[index % statusColors.length]
 );
 
-const DashboardHeader = () => {
-    const today = todayFormatter.format(new Date());
+type DashboardPeriod = "today" | "7d" | "30d" | "month" | "year" | "custom";
 
-    return (
-        <header className="dash-header">
-            <div>
-                <p className="dash-eyebrow">Resumen general</p>
-                <h1>Panel de control</h1>
-                <p className="dash-subtitle">
-                    Todo el movimiento de tu petshop, en un solo lugar.
-                </p>
-            </div>
-            <div className="dash-header-actions">
-                <span className="dash-date-chip">
-                    <CalendarIcon/>
-                    {today.charAt(0).toUpperCase() + today.slice(1)}
-                </span>
-                <Link to="/crearCliente" className="dash-btn dash-btn-primary">
-                    <PlusIcon/>
-                    Nuevo registro
-                </Link>
-            </div>
-        </header>
-    );
+const periodLabels: Record<DashboardPeriod, string> = {
+    today: "Hoy",
+    "7d": "Últimos 7 días",
+    "30d": "Últimos 30 días",
+    month: "Este mes",
+    year: "Este año",
+    custom: "Fecha específica",
 };
+
+const rangeDateFormatter = new Intl.DateTimeFormat("es-ES", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+});
+
+const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const endOfDay = (date: Date) => new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    23,
+    59,
+    59,
+    999,
+);
+
+const toDateInputValue = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+};
+
+const parseDateInputValue = (value: string) => {
+    const [year, month, day] = value.split("-").map(Number);
+
+    if (!year || !month || !day) {
+        return new Date();
+    }
+
+    return new Date(year, month - 1, day);
+};
+
+const getPeriodRange = (period: DashboardPeriod, customDate: string) => {
+    const now = new Date();
+    let start = startOfDay(now);
+    let end = endOfDay(now);
+
+    if (period === "7d") {
+        start = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6));
+    } else if (period === "30d") {
+        start = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29));
+    } else if (period === "month") {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === "year") {
+        start = new Date(now.getFullYear(), 0, 1);
+    } else if (period === "custom") {
+        const custom = parseDateInputValue(customDate);
+        start = startOfDay(custom);
+        end = endOfDay(custom);
+    }
+
+    const days = Math.max(
+        1,
+        Math.round((startOfDay(end).getTime() - startOfDay(start).getTime()) / 86_400_000) + 1,
+    );
+
+    return {start, end, days};
+};
+
+const formatRangeDate = (date: Date) => (
+    rangeDateFormatter.format(date).replace(/\./g, "")
+);
+
+const isPendingStatus = (status: string | null | undefined) => (
+    /pend/i.test(status ?? "")
+);
+
+const isCompletedStatus = (status: string | null | undefined) => (
+    /(pagad|complet|finaliz|entregad|listo)/i.test(status ?? "")
+);
+
+const formatClientPhones = (client: ClientDetail) => {
+    const phones = [...new Set(
+        client.client_phones
+            .map(item => item.phone.trim())
+            .filter(phone => phone.length > 0),
+    )];
+
+    return phones.length > 0 ? phones.join(", ") : "Sin teléfono";
+};
+
+interface DashboardHeaderProps {
+    period: DashboardPeriod;
+    customDate: string;
+    rangeLabel: string;
+    onPeriodChange: (period: DashboardPeriod) => void;
+    onCustomDateChange: (date: string) => void;
+}
+
+const DashboardHeader = ({
+    period,
+    customDate,
+    rangeLabel,
+    onPeriodChange,
+    onCustomDateChange,
+}: DashboardHeaderProps) => (
+    <header className="dash-header">
+        <div>
+            <p className="dash-eyebrow">Resumen del periodo</p>
+            <h1>Panel de control</h1>
+            <p className="dash-subtitle">
+                Todo el movimiento de tu petshop, en un solo lugar.
+            </p>
+        </div>
+        <div className="dash-header-actions">
+            <select
+                className="dash-filter-select"
+                value={period}
+                onChange={(event) => onPeriodChange(event.target.value as DashboardPeriod)}
+                aria-label="Filtrar estadísticas por periodo"
+            >
+                <option value="today">Hoy</option>
+                <option value="7d">Últimos 7 días</option>
+                <option value="30d">Últimos 30 días</option>
+                <option value="month">Este mes</option>
+                <option value="year">Este año</option>
+                <option value="custom">Fecha específica</option>
+            </select>
+            {period === "custom" && (
+                <input
+                    type="date"
+                    className="dash-filter-date"
+                    value={customDate}
+                    onChange={(event) => onCustomDateChange(event.target.value)}
+                    aria-label="Seleccionar fecha"
+                />
+            )}
+            <span className="dash-date-chip">
+                <CalendarIcon/>
+                {rangeLabel}
+            </span>
+            <Link to="/crearCliente" className="dash-btn dash-btn-primary">
+                <PlusIcon/>
+                Nuevo registro
+            </Link>
+        </div>
+    </header>
+);
 
 const EmptyState = ({icon, title, text}: { icon: ReactNode; title: string; text: string }) => (
     <div className="dash-empty">
@@ -147,13 +268,13 @@ const DashboardSkeleton = () => (
                 </div>
             ))}
         </div>
+        <div className="dash-card dash-skeleton-card dash-skeleton-card-sm"/>
+        <div className="dash-bottom-grid dash-bottom-grid-single">
+            <div className="dash-card dash-skeleton-card dash-skeleton-card-sm"/>
+        </div>
         <div className="dash-analytics-grid">
             <div className="dash-card dash-skeleton-card"/>
             <div className="dash-card dash-skeleton-card"/>
-        </div>
-        <div className="dash-bottom-grid">
-            <div className="dash-card dash-skeleton-card dash-skeleton-card-sm"/>
-            <div className="dash-card dash-skeleton-card dash-skeleton-card-sm"/>
         </div>
     </div>
 );
@@ -162,6 +283,14 @@ const Dashboard = () => {
     const [clients, setClients] = useState<ClientDetail[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [period, setPeriod] = useState<DashboardPeriod>("today");
+    const [customDate, setCustomDate] = useState(() => toDateInputValue(new Date()));
+    const [showRevenue, setShowRevenue] = useState(true);
+    const [updatingServiceId, setUpdatingServiceId] = useState<number | null>(null);
+    const [actionMessage, setActionMessage] = useState<{
+        type: "success" | "error";
+        text: string;
+    } | null>(null);
 
     const loadDashboard = useCallback(async () => {
         setLoading(true);
@@ -189,23 +318,41 @@ const Dashboard = () => {
         ))
     ), [clients]);
 
+    const dateRange = useMemo(() => getPeriodRange(period, customDate), [period, customDate]);
+
+    const rangeLabel = useMemo(() => {
+        const startLabel = formatRangeDate(dateRange.start);
+        const endLabel = formatRangeDate(dateRange.end);
+
+        return startLabel === endLabel
+            ? `${periodLabels[period]} · ${startLabel}`
+            : `${periodLabels[period]} · ${startLabel} – ${endLabel}`;
+    }, [dateRange, period]);
+
+    const filteredServices = useMemo<ServiceRow[]>(() => (
+        services.filter(({service}) => {
+            const date = new Date(service.date);
+
+            return !Number.isNaN(date.getTime())
+                && date >= dateRange.start
+                && date <= dateRange.end;
+        })
+    ), [services, dateRange]);
+
     const totals = useMemo(() => {
-        const totalClients = clients.length;
-        const totalPets = clients.reduce((sum, client) => sum + client.pets.length, 0);
-        const totalServices = services.length;
-        const revenue = services.reduce((sum, row) => sum + toNumber(row.service.price), 0);
-        const collected = services.reduce((sum, row) => sum + toNumber(row.service.paid_amount), 0);
+        const totalClients = new Set(filteredServices.map(({client}) => client.id)).size;
+        const totalPets = new Set(filteredServices.map(({pet}) => pet.id)).size;
+        const totalServices = filteredServices.length;
+        const revenue = filteredServices.reduce((sum, row) => sum + toNumber(row.service.price), 0);
+        const collected = filteredServices.reduce((sum, row) => sum + toNumber(row.service.paid_amount), 0);
         const pending = Math.max(revenue - collected, 0);
         const averageTicket = totalServices > 0 ? revenue / totalServices : 0;
-        const clientsWithPets = clients.filter(client => client.pets.length > 0).length;
-        const breeds = new Set(clients.flatMap(client => client.pets.map(pet => pet.raza))).size;
-        const now = new Date();
-        const servicesThisMonth = services.filter(({service}) => {
-            const date = new Date(service.date);
-            return !Number.isNaN(date.getTime())
-                && date.getMonth() === now.getMonth()
-                && date.getFullYear() === now.getFullYear();
-        }).length;
+        const pendingServiceCount = filteredServices.filter(
+            ({service}) => isPendingStatus(service.status),
+        ).length;
+        const completedServiceCount = filteredServices.filter(
+            ({service}) => isCompletedStatus(service.status),
+        ).length;
 
         return {
             totalClients,
@@ -215,11 +362,10 @@ const Dashboard = () => {
             collected,
             pending,
             averageTicket,
-            clientsWithPets,
-            breeds,
-            servicesThisMonth,
+            pendingServiceCount,
+            completedServiceCount,
         };
-    }, [clients, services]);
+    }, [filteredServices]);
 
     const monthlyData = useMemo(() => {
         const now = new Date();
@@ -235,7 +381,7 @@ const Dashboard = () => {
         });
         const monthsByKey = new Map(months.map(month => [month.key, month]));
 
-        services.forEach(({service}) => {
+        filteredServices.forEach(({service}) => {
             const date = new Date(service.date);
 
             if (Number.isNaN(date.getTime())) {
@@ -250,7 +396,7 @@ const Dashboard = () => {
         });
 
         return months;
-    }, [services]);
+    }, [filteredServices]);
 
     const maxMonthlyAmount = Math.max(...monthlyData.map(month => month.amount), 1);
 
@@ -260,10 +406,91 @@ const Dashboard = () => {
         ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
         : null;
 
+    const pendingServices = useMemo<ServiceRow[]>(() => (
+        filteredServices
+            .filter(({service}) => isPendingStatus(service.status))
+            .sort((a, b) => {
+                const debtA = getServiceDebt(a.service.price, a.service.paid_amount);
+                const debtB = getServiceDebt(b.service.price, b.service.paid_amount);
+                const dateA = new Date(a.service.date).getTime() || 0;
+                const dateB = new Date(b.service.date).getTime() || 0;
+                return debtB - debtA || dateB - dateA || b.service.id - a.service.id;
+            })
+    ), [filteredServices]);
+
+    const pendingPetCount = new Set(pendingServices.map(({pet}) => pet.id)).size;
+    const pendingDebtTotal = pendingServices.reduce(
+        (sum, {service}) => sum + getServiceDebt(service.price, service.paid_amount),
+        0,
+    );
+
+    const handleCompletePendingService = async (
+        service: ServiceRecord,
+        pet: PetRecord,
+    ) => {
+        if (updatingServiceId !== null) {
+            return;
+        }
+
+        setUpdatingServiceId(service.id);
+        setActionMessage(null);
+
+        try {
+            await updateServiceStatus(service.id, "Completado", toNumber(service.price));
+
+            setClients(currentClients => currentClients.map(client => ({
+                ...client,
+                pets: client.pets.map(currentPet => ({
+                    ...currentPet,
+                    services: currentPet.services.map(currentService => (
+                        currentService.id === service.id
+                            ? {
+                                ...currentService,
+                                status: "Completado",
+                                paid_amount: service.price,
+                            }
+                            : currentService
+                    )),
+                })),
+            })));
+
+            setActionMessage({
+                type: "success",
+                text: `Servicio de ${pet.name} completado. Abono registrado: ${formatMoney(toNumber(service.price))}.`,
+            });
+        } catch {
+            setActionMessage({
+                type: "error",
+                text: "No se pudo completar el servicio. Inténtalo de nuevo.",
+            });
+        } finally {
+            setUpdatingServiceId(null);
+        }
+    };
+
+    const statusServices = useMemo<ServiceRow[]>(() => (
+        filteredServices
+            .filter(({service}) => (
+                isPendingStatus(service.status) || isCompletedStatus(service.status)
+            ))
+            .sort((a, b) => {
+                const pendingA = isPendingStatus(a.service.status) ? 1 : 0;
+                const pendingB = isPendingStatus(b.service.status) ? 1 : 0;
+                const dateA = new Date(a.service.date).getTime() || 0;
+                const dateB = new Date(b.service.date).getTime() || 0;
+                return pendingB - pendingA || dateB - dateA || b.service.id - a.service.id;
+            })
+    ), [filteredServices]);
+
+    const statusServiceDetails = useMemo(
+        () => statusServices.slice(0, 50),
+        [statusServices],
+    );
+
     const statusBreakdown = useMemo(() => {
         const counts = new Map<string, number>();
 
-        services.forEach(({service}) => {
+        statusServices.forEach(({service}) => {
             const status = service.status?.trim() || "Sin estado";
             counts.set(status, (counts.get(status) ?? 0) + 1);
         });
@@ -272,10 +499,10 @@ const Dashboard = () => {
             .map(([status, count]) => ({
                 status,
                 count,
-                percentage: totals.totalServices > 0 ? (count / totals.totalServices) * 100 : 0,
+                percentage: statusServices.length > 0 ? (count / statusServices.length) * 100 : 0,
             }))
             .sort((a, b) => b.count - a.count);
-    }, [services, totals.totalServices]);
+    }, [statusServices]);
 
     let donutCursor = 0;
     const donutGradient = statusBreakdown.length > 0
@@ -287,63 +514,80 @@ const Dashboard = () => {
         : "#efedf7";
 
     const recentServices = useMemo(() => (
-        [...services]
+        [...filteredServices]
             .sort((a, b) => {
                 const dateA = new Date(a.service.date).getTime() || 0;
                 const dateB = new Date(b.service.date).getTime() || 0;
                 return dateB - dateA || b.service.id - a.service.id;
             })
             .slice(0, 6)
-    ), [services]);
+    ), [filteredServices]);
 
-    const topClients = useMemo(() => (
-        clients
-            .map(client => {
-                const clientServices = client.pets.flatMap(pet => pet.services);
+    const topClients = useMemo(() => {
+        const byClient = new Map<number, {
+            client: ClientDetail;
+            revenue: number;
+            serviceCount: number;
+        }>();
 
-                return {
-                    client,
-                    revenue: clientServices.reduce((sum, service) => sum + toNumber(service.price), 0),
-                    serviceCount: clientServices.length,
-                };
-            })
-            .filter(item => item.serviceCount > 0)
-            .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, 4)
-    ), [clients]);
+        filteredServices.forEach(({client, service}) => {
+            const entry = byClient.get(client.id) ?? {
+                client,
+                revenue: 0,
+                serviceCount: 0,
+            };
+
+            entry.revenue += toNumber(service.price);
+            entry.serviceCount += 1;
+            byClient.set(client.id, entry);
+        });
+
+        return [...byClient.values()]
+            .sort((a, b) => b.revenue - a.revenue || b.serviceCount - a.serviceCount)
+            .slice(0, 4);
+    }, [filteredServices]);
 
     const stats = [
         {
             label: "Clientes",
             value: totals.totalClients.toLocaleString("es-MX"),
-            helper: `${totals.clientsWithPets} con mascotas registradas`,
+            helper: totals.totalPets > 0
+                ? `${totals.totalPets} ${totals.totalPets === 1 ? "mascota atendida" : "mascotas atendidas"}`
+                : "Sin clientes atendidos en el periodo",
             icon: <UsersIcon/>,
             tone: "purple",
         },
         {
             label: "Mascotas",
             value: totals.totalPets.toLocaleString("es-MX"),
-            helper: `${totals.breeds} ${totals.breeds === 1 ? "raza registrada" : "razas registradas"}`,
+            helper: pendingPetCount > 0
+                ? `${pendingPetCount} ${pendingPetCount === 1 ? "pendiente" : "pendientes"} · ${formatMoney(pendingDebtTotal)} por cobrar`
+                : "Sin mascotas pendientes en el periodo",
             icon: <PawIcon/>,
             tone: "pink",
         },
         {
             label: "Servicios",
             value: totals.totalServices.toLocaleString("es-MX"),
-            helper: `${totals.servicesThisMonth} registrados este mes`,
+            helper: totals.totalServices > 0
+                ? [
+                    `${totals.pendingServiceCount} ${totals.pendingServiceCount === 1 ? "pendiente" : "pendientes"}`,
+                    `${totals.completedServiceCount} ${totals.completedServiceCount === 1 ? "completado" : "completados"}`,
+                ].join(" · ")
+                : "Sin servicios en el periodo",
             icon: <ScissorsIcon/>,
             tone: "blue",
         },
         {
             label: "Ingresos",
-            value: formatMoney(totals.revenue),
-            helper: `${formatMoney(totals.collected)} cobrado`,
+            value: showRevenue ? formatMoney(totals.revenue) : "•••••",
+            helper: showRevenue ? `${formatMoney(totals.collected)} cobrado` : "Ingresos ocultos",
             icon: <WalletIcon/>,
             tone: "green",
         },
     ];
 
-    let trendLabel = "Sin ingresos registrados este mes";
+    let trendLabel = "Sin ingresos en el periodo";
     let trendTone = "neutral";
     let trendIcon: ReactNode = null;
 
@@ -352,14 +596,20 @@ const Dashboard = () => {
         trendTone = monthChange >= 0 ? "positive" : "negative";
         trendIcon = <TrendingUpIcon/>;
     } else if (currentMonthRevenue > 0) {
-        trendLabel = "Primer ingreso registrado este mes";
+        trendLabel = "Primer ingreso registrado en el periodo";
         trendTone = "positive";
         trendIcon = <TrendingUpIcon/>;
     }
 
     return (
         <div className="dashboard">
-            <DashboardHeader/>
+            <DashboardHeader
+                period={period}
+                customDate={customDate}
+                rangeLabel={rangeLabel}
+                onPeriodChange={setPeriod}
+                onCustomDateChange={setCustomDate}
+            />
 
             {loading && <DashboardSkeleton/>}
 
@@ -392,114 +642,116 @@ const Dashboard = () => {
                         ))}
                     </section>
 
-                    <div className="dash-analytics-grid">
-                        <section className="dash-card revenue-card" aria-labelledby="revenue-title">
-                            <div className="dash-card-header">
-                                <div className="dash-card-title">
-                                    <h2 id="revenue-title">Ingresos</h2>
-                                    <p>Facturación de los últimos 6 meses</p>
-                                </div>
-                                <span className={`revenue-trend revenue-trend-${trendTone}`}>
-                                    {trendIcon}
-                                    {trendLabel}
-                                </span>
+                    <section className="dash-card pending-card" aria-labelledby="pending-title">
+                        <div className="dash-card-header">
+                            <div className="dash-card-title">
+                                <h2 id="pending-title">Mascotas pendientes</h2>
+                                <p>
+                                    {pendingPetCount} {pendingPetCount === 1 ? "mascota" : "mascotas"}
+                                    {" · "}
+                                    {formatMoney(pendingDebtTotal)} por cobrar
+                                </p>
                             </div>
+                            <Link to="/verCliente" className="dash-link">
+                                Ver clientes
+                                <ArrowUpRightIcon/>
+                            </Link>
+                        </div>
 
-                            <div className="revenue-total-block">
-                                <span>Total facturado</span>
-                                <p>{formatMoney(totals.revenue)}</p>
-                            </div>
-
-                            <div className="revenue-metrics">
-                                <div className="revenue-metric">
-                                    <span>Cobrado</span>
-                                    <strong className="revenue-metric-success">{formatMoney(totals.collected)}</strong>
-                                </div>
-                                <div className="revenue-metric">
-                                    <span>Por cobrar</span>
-                                    <strong className="revenue-metric-warning">{formatMoney(totals.pending)}</strong>
-                                </div>
-                                <div className="revenue-metric">
-                                    <span>Ticket promedio</span>
-                                    <strong>{formatMoney(totals.averageTicket)}</strong>
-                                </div>
-                            </div>
-
-                            <div
-                                className="bar-chart"
-                                role="img"
-                                aria-label="Ingresos facturados en los últimos seis meses"
+                        {actionMessage && (
+                            <p
+                                className={`message-banner message-banner-${actionMessage.type}`}
+                                role={actionMessage.type === "error" ? "alert" : "status"}
                             >
-                                {monthlyData.map(month => {
-                                    const height = month.amount > 0
-                                        ? Math.max((month.amount / maxMonthlyAmount) * 100, 4)
-                                        : 0;
+                                {actionMessage.text}
+                            </p>
+                        )}
 
-                                    return (
-                                        <div className="bar-column" key={month.key}>
-                                            <div className="bar-track">
-                                                <div
-                                                    className={`bar-fill${month.current ? " bar-fill-current" : ""}`}
-                                                    style={{height: `${height}%`}}
-                                                    title={`${month.label}: ${formatMoney(month.amount)}`}
-                                                />
-                                            </div>
-                                            <span className="bar-label">{month.label}</span>
-                                        </div>
-                                    );
-                                })}
+                        {pendingServices.length === 0 ? (
+                            <EmptyState
+                                icon={<PawIcon/>}
+                                title="Sin mascotas pendientes"
+                                text="No hay servicios pendientes en el periodo seleccionado."
+                            />
+                        ) : (
+                            <div className="dash-table-wrap">
+                                <table className="dash-table pending-table">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Mascota</th>
+                                        <th scope="col">Dueño</th>
+                                        <th scope="col">Teléfono</th>
+                                        <th scope="col">Servicio</th>
+                                        <th scope="col">Debe</th>
+                                        <th scope="col">Estado</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {pendingServices.map(({service, pet, client}) => {
+                                        const isUpdating = updatingServiceId === service.id;
+                                        const isBusy = updatingServiceId !== null;
+
+                                        return (
+                                            <tr key={service.id}>
+                                                <td>
+                                                    <div className="service-primary">
+                                                        <span className="service-avatar">
+                                                            {getInitials(pet.name)}
+                                                        </span>
+                                                        <div className="service-client">
+                                                            <span className="service-name">{pet.name}</span>
+                                                            <span className="service-detail">
+                                                                {pet.raza} · {pet.edad}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className="service-name">{client.name}</span>
+                                                </td>
+                                                <td className="dash-muted-cell">
+                                                    {formatClientPhones(client)}
+                                                </td>
+                                                <td>
+                                                    <span className="service-name">{service.service_type}</span>
+                                                    {service.details && (
+                                                        <span className="service-detail">{service.details}</span>
+                                                    )}
+                                                </td>
+                                                <td className="price-cell pending-debt-cell">
+                                                    {formatMoney(getServiceDebt(service.price, service.paid_amount))}
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        type="button"
+                                                        className="status-badge status-badge-warning pending-complete-button"
+                                                        onClick={() => void handleCompletePendingService(service, pet)}
+                                                        disabled={isBusy}
+                                                        title="Clic para completar y registrar el abono"
+                                                        aria-label={`Marcar como completado y pagado el servicio de ${pet.name}`}
+                                                    >
+                                                        {isUpdating ? "Guardando…" : "Pendiente"}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    </tbody>
+                                </table>
                             </div>
-                        </section>
+                        )}
+                    </section>
 
-                        <section className="dash-card status-card" aria-labelledby="status-title">
-                            <div className="dash-card-header">
-                                <div className="dash-card-title">
-                                    <h2 id="status-title">Servicios por estado</h2>
-                                    <p>Distribución de todos los servicios</p>
-                                </div>
-                            </div>
-
-                            {statusBreakdown.length === 0 ? (
-                                <EmptyState
-                                    icon={<ScissorsIcon/>}
-                                    title="Aún no hay servicios"
-                                    text="Los servicios que registres aparecerán aquí."
-                                />
-                            ) : (
-                                <div className="status-body">
-                                    <div className="donut" style={{background: donutGradient}}>
-                                        <div className="donut-center">
-                                            <strong>{totals.totalServices}</strong>
-                                            <span>{totals.totalServices === 1 ? "servicio" : "servicios"}</span>
-                                        </div>
-                                    </div>
-
-                                    <ul className="status-legend">
-                                        {statusBreakdown.map((item, index) => (
-                                            <li className="status-legend-item" key={item.status}>
-                                                <span
-                                                    className="status-dot"
-                                                    style={{background: getStatusColor(index)}}
-                                                />
-                                                <span className="status-legend-label">{item.status}</span>
-                                                <span className="status-legend-count">{item.count}</span>
-                                                <span className="status-legend-percent">
-                                                    {item.percentage.toFixed(0)}%
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                        </section>
-                    </div>
-
-                    <div className="dash-bottom-grid">
+                    <div className={`dash-bottom-grid${dateRange.days <= 1 ? " dash-bottom-grid-single" : ""}`}>
                         <section className="dash-card recent-card" aria-labelledby="recent-title">
                             <div className="dash-card-header">
                                 <div className="dash-card-title">
                                     <h2 id="recent-title">Servicios recientes</h2>
-                                    <p>Los últimos movimientos registrados</p>
+                                    <p>
+                                        {dateRange.days === 1
+                                            ? `Servicios del ${formatRangeDate(dateRange.start)}`
+                                            : "Los últimos movimientos del periodo"}
+                                    </p>
                                 </div>
                                 <Link to="/verCliente" className="dash-link">
                                     Ver clientes
@@ -510,8 +762,10 @@ const Dashboard = () => {
                             {recentServices.length === 0 ? (
                                 <EmptyState
                                     icon={<PawIcon/>}
-                                    title="Todavía no hay movimientos"
-                                    text="Registra tu primer cliente, mascota y servicio para empezar."
+                                    title={dateRange.days === 1 ? "Sin servicios ese día" : "Sin movimientos en el periodo"}
+                                    text={dateRange.days === 1
+                                        ? `No hay servicios registrados el ${formatRangeDate(dateRange.start)}.`
+                                        : "No hay servicios registrados en el rango de fechas seleccionado."}
                                 />
                             ) : (
                                 <div className="dash-table-wrap">
@@ -566,45 +820,211 @@ const Dashboard = () => {
                             )}
                         </section>
 
-                        <section className="dash-card top-clients-card" aria-labelledby="top-clients-title">
+                        {dateRange.days > 1 && (
+                            <section className="dash-card top-clients-card" aria-labelledby="top-clients-title">
+                                <div className="dash-card-header">
+                                    <div className="dash-card-title">
+                                        <h2 id="top-clients-title">Top clientes</h2>
+                                        <p>Por facturación del periodo</p>
+                                    </div>
+                                    <Link to="/verCliente" className="dash-link" aria-label="Ver todos los clientes">
+                                        <ArrowUpRightIcon/>
+                                    </Link>
+                                </div>
+
+                                {topClients.length === 0 ? (
+                                    <EmptyState
+                                        icon={<UserPlusIcon/>}
+                                        title="Sin clientes con servicios"
+                                        text="Cuando registres servicios en el periodo, aquí verás a tus mejores clientes."
+                                    />
+                                ) : (
+                                    <ol className="top-clients-list">
+                                        {topClients.map(({client, revenue, serviceCount}, index) => (
+                                            <li className="top-client" key={client.id}>
+                                                <span className={`client-avatar client-avatar-${index % 4}`}>
+                                                    {getInitials(client.name)}
+                                                </span>
+                                                <div className="client-info">
+                                                    <span className="client-name">{client.name}</span>
+                                                    <span className="client-meta">
+                                                        {client.pets.length} {client.pets.length === 1 ? "mascota" : "mascotas"}
+                                                        {" · "}
+                                                        {serviceCount} {serviceCount === 1 ? "servicio" : "servicios"}
+                                                    </span>
+                                                </div>
+                                                <span className="client-amount">{formatMoney(revenue)}</span>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                )}
+                            </section>
+                        )}
+                    </div>
+                    <div className="dash-analytics-grid">
+                        <section className="dash-card revenue-card" aria-labelledby="revenue-title">
                             <div className="dash-card-header">
                                 <div className="dash-card-title">
-                                    <h2 id="top-clients-title">Top clientes</h2>
-                                    <p>Por facturación total</p>
+                                    <h2 id="revenue-title">Ingresos</h2>
+                                    <p>Facturación mensual del periodo</p>
                                 </div>
-                                <Link to="/verCliente" className="dash-link" aria-label="Ver todos los clientes">
-                                    <ArrowUpRightIcon/>
-                                </Link>
+                                <div className="revenue-header-actions">
+                                    {showRevenue && (
+                                        <span className={`revenue-trend revenue-trend-${trendTone}`}>
+                                            {trendIcon}
+                                            {trendLabel}
+                                        </span>
+                                    )}
+                                    <label className="revenue-visibility-toggle">
+                                        <input
+                                            type="checkbox"
+                                            checked={showRevenue}
+                                            onChange={(event) => setShowRevenue(event.target.checked)}
+                                        />
+                                        <span>Mostrar ingresos</span>
+                                    </label>
+                                </div>
                             </div>
 
-                            {topClients.length === 0 ? (
+                            {!showRevenue ? (
+                                <div className="revenue-hidden-state">
+                                    <WalletIcon/>
+                                    <p>Ingresos ocultos</p>
+                                    <span>Marca “Mostrar ingresos” para ver la facturación del periodo.</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="revenue-total-block">
+                                        <span>Total facturado</span>
+                                        <p>{formatMoney(totals.revenue)}</p>
+                                    </div>
+
+                                    <div className="revenue-metrics">
+                                        <div className="revenue-metric">
+                                            <span>Cobrado</span>
+                                            <strong className="revenue-metric-success">
+                                                {formatMoney(totals.collected)}
+                                            </strong>
+                                        </div>
+                                        <div className="revenue-metric">
+                                            <span>Por cobrar</span>
+                                            <strong className="revenue-metric-warning">
+                                                {formatMoney(totals.pending)}
+                                            </strong>
+                                        </div>
+                                        <div className="revenue-metric">
+                                            <span>Ticket promedio</span>
+                                            <strong>{formatMoney(totals.averageTicket)}</strong>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="bar-chart"
+                                        role="img"
+                                        aria-label="Ingresos facturados por mes en el periodo seleccionado"
+                                    >
+                                        {monthlyData.map(month => {
+                                            const height = month.amount > 0
+                                                ? Math.max((month.amount / maxMonthlyAmount) * 100, 4)
+                                                : 0;
+
+                                            return (
+                                                <div className="bar-column" key={month.key}>
+                                                    <div className="bar-track">
+                                                        <div
+                                                            className={`bar-fill${month.current ? " bar-fill-current" : ""}`}
+                                                            style={{height: `${height}%`}}
+                                                            title={`${month.label}: ${formatMoney(month.amount)}`}
+                                                        />
+                                                    </div>
+                                                    <span className="bar-label">{month.label}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
+                        </section>
+
+                        <section className="dash-card status-card" aria-labelledby="status-title">
+                            <div className="dash-card-header">
+                                <div className="dash-card-title">
+                                    <h2 id="status-title">Servicios por estado</h2>
+                                    <p>Pendientes y completados del periodo</p>
+                                </div>
+                            </div>
+
+                            {statusServices.length === 0 ? (
                                 <EmptyState
-                                    icon={<UserPlusIcon/>}
-                                    title="Sin clientes con servicios"
-                                    text="Cuando registres servicios, aquí verás a tus mejores clientes."
+                                    icon={<ScissorsIcon/>}
+                                    title="Sin pendientes ni completados"
+                                    text="No hay servicios pendientes o completados en el periodo seleccionado."
                                 />
                             ) : (
-                                <ol className="top-clients-list">
-                                    {topClients.map(({client, revenue, serviceCount}, index) => (
-                                        <li className="top-client" key={client.id}>
-                                            <span className={`client-avatar client-avatar-${index % 4}`}>
-                                                {getInitials(client.name)}
-                                            </span>
-                                            <div className="client-info">
-                                                <span className="client-name">{client.name}</span>
-                                                <span className="client-meta">
-                                                    {client.pets.length} {client.pets.length === 1 ? "mascota" : "mascotas"}
-                                                    {" · "}
-                                                    {serviceCount} {serviceCount === 1 ? "servicio" : "servicios"}
+                                <div className="status-body">
+                                    <div className="donut" style={{background: donutGradient}}>
+                                        <div className="donut-center">
+                                            <strong>{statusServices.length}</strong>
+                                            <span>{statusServices.length === 1 ? "servicio" : "servicios"}</span>
+                                        </div>
+                                    </div>
+
+                                    <ul className="status-legend">
+                                        {statusBreakdown.map((item, index) => (
+                                            <li className="status-legend-item" key={item.status}>
+                                                <span
+                                                    className="status-dot"
+                                                    style={{background: getStatusColor(index)}}
+                                                />
+                                                <span className="status-legend-label">{item.status}</span>
+                                                <span className="status-legend-count">{item.count}</span>
+                                                <span className="status-legend-percent">
+                                                    {item.percentage.toFixed(0)}%
                                                 </span>
-                                            </div>
-                                            <span className="client-amount">{formatMoney(revenue)}</span>
-                                        </li>
-                                    ))}
-                                </ol>
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    <div className="status-services">
+                                        <p className="status-services-heading">
+                                            Detalle del periodo
+                                            {statusServices.length > statusServiceDetails.length && (
+                                                <span className="status-services-limit">
+                                                    {statusServiceDetails.length} de {statusServices.length}
+                                                </span>
+                                            )}
+                                        </p>
+                                        <ul className="status-services-list">
+                                            {statusServiceDetails.map(({service, pet, client}) => {
+                                                const tone = getStatusTone(service.status);
+                                                const debt = getServiceDebt(service.price, service.paid_amount);
+
+                                                return (
+                                                    <li className="status-service-item" key={service.id}>
+                                                        <span className={`status-badge status-badge-${tone}`}>
+                                                            {service.status || "Sin estado"}
+                                                        </span>
+                                                        <div className="status-service-info">
+                                                            <span className="status-service-pet">
+                                                                {pet.name} · {service.service_type}
+                                                            </span>
+                                                            <span className="status-service-owner">
+                                                                {client.name} · {formatClientPhones(client)}
+                                                            </span>
+                                                        </div>
+                                                        <span className="status-service-debt">
+                                                            {formatMoney(debt)}
+                                                        </span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                </div>
                             )}
                         </section>
                     </div>
+
                 </>
             )}
         </div>
