@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 const TestPost = () => {
   const [hasPaid, setHasPaid] = useState<boolean>(false);
+  const [petAge, setPetAge] = useState<"Cachorro" | "Adulto">("Adulto");
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         e.preventDefault();
@@ -18,6 +19,7 @@ const TestPost = () => {
             const pet = await createPet(
                 value("nombrePet"),
                 value("razaPet"),
+                petAge,
                 client.id
             )
             await createService(
@@ -30,6 +32,7 @@ const TestPost = () => {
             )
             alert("¡Guardado!");
             setHasPaid(false);
+            setPetAge("Adulto");
           } catch (error) {
             alert(error);
           }
@@ -52,6 +55,16 @@ const TestPost = () => {
                 <p>Raza mascota</p>
                 <input type="text" id="razaPet" name="razaPet"
                        placeholder="Escribe la raza de la mascota"/>
+                <p>Edad mascota</p>
+                <select
+                  id="edadPet"
+                  name="edadPet"
+                  value={petAge}
+                  onChange={(e) => setPetAge(e.target.value as "Cachorro" | "Adulto")}
+                >
+                  <option value="Cachorro">Cachorro</option>
+                  <option value="Adulto">Adulto</option>
+                </select>
                 <p>Tipo de servicio</p>
 
                 <select id="serviceType" name="serviceType">

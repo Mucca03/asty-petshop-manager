@@ -2,7 +2,7 @@ import {Request, Response } from 'express'
 import prisma from "../services/prisma"
 
 export const createPet = async (req: Request, res: Response) =>{
-    const {name, raza, client_id} = req.body;
+    const {name, raza, edad, client_id} = req.body;
 
     if(!name || !raza || !client_id){
         return res.status(400).json({
@@ -14,6 +14,7 @@ export const createPet = async (req: Request, res: Response) =>{
         data:{
             name,
             raza,
+            edad: edad || "Adulto",
             client_id: Number(client_id),
         },
     });

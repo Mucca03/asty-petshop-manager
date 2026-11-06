@@ -45,6 +45,7 @@ const TestGet = () => {
                     <th>Telefono</th>
                     <th>Nombre mascota</th>
                     <th>Raza</th>
+                    <th>Edad</th>
                     <th>Servicio</th>
                     <th>Detalles</th>
                     <th>Precio</th>
@@ -69,6 +70,7 @@ const TestGet = () => {
                                     <td className="text-lg font-semibold">{phone.phone}</td>
                                     <td className="text-lg font-semibold">{pet.name}</td>
                                     <td className="text-lg font-semibold">{pet.raza}</td>
+                                    <td className="text-lg font-semibold">{pet.edad}</td>
                                     <td className="text-lg font-semibold">{service.service_type}</td>
                                     <td className="text-lg font-semibold">{service.details}</td>
                                     <td className="text-lg font-semibold">{service.price}</td>

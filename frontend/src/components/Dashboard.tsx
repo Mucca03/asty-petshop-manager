@@ -539,7 +539,7 @@ const Dashboard = () => {
                                                             <div className="service-client">
                                                                 <span className="service-name">{client.name}</span>
                                                                 <span className="service-detail">
-                                                                    {pet.name} · {pet.raza}
+                                                                    {pet.name} · {pet.raza} · {pet.edad}
                                                                 </span>
                                                             </div>
                                                         </div>

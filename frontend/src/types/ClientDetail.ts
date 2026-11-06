@@ -19,6 +19,7 @@ export interface PetRecord {
     id: number;
     name: string;
     raza: string;
+    edad: string;
     client_id: number;
     created_at?: string | null;
     services: ServiceRecord[];
