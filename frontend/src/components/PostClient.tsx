@@ -4,16 +4,26 @@ import { useState } from 'react';
 const TestPost = () => {
   const [hasPaid, setHasPaid] = useState<boolean>(false);
   const [petAge, setPetAge] = useState<"Cachorro" | "Adulto">("Adulto");
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         e.preventDefault();
+        setMessage(null);
+        const form = e.currentTarget;
           try {
-            const formData = new FormData(e.currentTarget);
+            const formData = new FormData(form);
             const value = (name: string) => String(formData.get(name) ?? "").trim();
             const numberValue = (name: string) => {
                 const number = Number(formData.get(name));
                 return Number.isFinite(number) ? number : 0;
             };
+            const price = numberValue("price");
+            const paidAmount = hasPaid ? numberValue("paidAmount") : 0;
+
+            if (hasPaid && paidAmount > price) {
+                setMessage({type: "error", text: "La cantidad pagada no puede ser mayor al precio"});
+                return;
+            }
 
             const client = await createClient(value("nombre"), value("telefono"));
             const pet = await createPet(
@@ -25,16 +35,20 @@ const TestPost = () => {
             await createService(
                 value("serviceType"),
                 value("details"),
-                numberValue("price"),
-                numberValue("paidAmount"),
+                price,
+                paidAmount,
                 value("status"),
                 pet.id
             )
-            alert("¡Guardado!");
+            setMessage({type: "success", text: "¡Guardado!"});
+            form.reset();
             setHasPaid(false);
             setPetAge("Adulto");
           } catch (error) {
-            alert(error);
+            setMessage({
+                type: "error",
+                text: error instanceof Error ? error.message : "Ocurrió un error al guardar el registro",
+            });
           }
     };
 
@@ -42,6 +56,15 @@ const TestPost = () => {
 
     <div>
         <form onSubmit={handleSubmit}>
+
+                {message && (
+                  <div
+                    className={`message-banner message-banner-${message.type}`}
+                    role={message.type === "error" ? "alert" : "status"}
+                  >
+                    {message.text}
+                  </div>
+                )}
 
                 <p>Nombre cliente</p>
                 <input type="text" id="nombre" name="nombre"
@@ -95,7 +118,7 @@ const TestPost = () => {
 
                 <p>Estado</p>
                 <input type="text" id="status" name="status"
-                  placeholder="Pendiente"  value="Pendiente" />
+                  placeholder="Pendiente" value="Pendiente" readOnly />
                 <br/>
                 <button type="submit">
                     Guardar registro

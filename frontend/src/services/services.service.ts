@@ -17,4 +17,13 @@ const createService = async (service: string, details: string,
     return data
 };
 
-export {createService};
+const updateServiceStatus = async (serviceId: number, status: string, paidAmount?: number): Promise<Service> => {
+    const {data} = await axios.patch(`/api/services/${serviceId}/status`, {
+        status: status,
+        ...(paidAmount !== undefined ? { paid_amount: paidAmount } : {}),
+    });
+
+    return data;
+};
+
+export {createService, updateServiceStatus};
