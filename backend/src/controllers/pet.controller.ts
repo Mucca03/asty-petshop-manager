@@ -2,9 +2,13 @@ import {Request, Response } from 'express'
 import prisma from "../services/prisma"
 
 export const createPet = async (req: Request, res: Response) =>{
-    const {name, raza, edad, client_id} = req.body;
+    const {name, raza, edad, client_id} = req.body ?? {};
+    const petName = typeof name === "string" ? name.trim() : "";
+    const petRaza = typeof raza === "string" ? raza.trim() : "";
+    const petAge = typeof edad === "string" && edad.trim().length > 0 ? edad.trim() : "Adulto";
+    const clientId = Number(client_id);
 
-    if(!name || !raza || !client_id){
+    if(!petName || !petRaza || !Number.isInteger(clientId) || clientId <= 0){
         return res.status(400).json({
             error: "name, raza and client are required",
         });
@@ -12,10 +16,10 @@ export const createPet = async (req: Request, res: Response) =>{
 
     const create = await prisma.pets.create({
         data:{
-            name,
-            raza,
-            edad: edad || "Adulto",
-            client_id: Number(client_id),
+            name: petName,
+            raza: petRaza,
+            edad: petAge,
+            client_id: clientId,
         },
     });
 

@@ -2,9 +2,15 @@ import {Request, Response } from 'express'
 import prisma from "../services/prisma"
 
 export const createClient = async (req: Request, res: Response) =>{
-    const {name, phones} = req.body;
+    const {name, phones} = req.body ?? {};
+    const clientName = typeof name === "string" ? name.trim() : "";
+    const phoneList = Array.isArray(phones)
+        ? phones
+            .map(phone => typeof phone === "string" ? phone.trim() : "")
+            .filter(phone => phone.length > 0)
+        : [];
 
-    if(!name || !phones){
+    if(!clientName || phoneList.length === 0){
         return res.status(400).json({
             error: "name and phones are required",
         });
@@ -12,9 +18,9 @@ export const createClient = async (req: Request, res: Response) =>{
 
     const create = await prisma.clients.create({
         data:{
-            name,
+            name: clientName,
             client_phones:{
-                create: phones.map((phone:string)=> ({phone}))
+                create: phoneList.map(phone => ({phone}))
             },
         },
         include: {
