@@ -1,4 +1,4 @@
-import {useMemo, useState} from "react";
+import {useCallback, useMemo, useState} from "react";
 import type {ReactNode} from "react";
 import {Link} from "react-router-dom";
 import {getClients, updateServiceStatus} from "../services/index.ts";
@@ -10,8 +10,11 @@ import {
     isServiceStatusOpen,
     SERVICE_STATUS,
 } from "../domain/serviceLifecycle.ts";
+import {getClientActivity} from "../domain/clientActivity.ts";
 import {useAsyncAction} from "../hooks/useAsyncAction.ts";
 import {useAsyncResource} from "../hooks/useAsyncResource.ts";
+import ClientServicesDialog from "./ClientServicesDialog.tsx";
+import ClientTypeBadge from "./ClientTypeBadge.tsx";
 import {
     AlertTriangleIcon,
     ArrowUpRightIcon,
@@ -277,8 +280,28 @@ const Dashboard = () => {
     const [period, setPeriod] = useState<DashboardPeriod>("today");
     const [customDate, setCustomDate] = useState(() => toDateInputValue(new Date()));
     const [showRevenue, setShowRevenue] = useState(true);
+    const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
     const clients = useMemo(() => clientsResource.data ?? [], [clientsResource.data]);
+    const clientActivity = useMemo(() => new Map(
+        clients.map(client => [client.id, getClientActivity(client)]),
+    ), [clients]);
+    const selectedClient = useMemo(
+        () => clients.find(client => client.id === selectedClientId) ?? null,
+        [clients, selectedClientId],
+    );
+    const selectedClientActivity = selectedClient
+        ? clientActivity.get(selectedClient.id) ?? null
+        : null;
+    const openClient = useCallback((client: ClientDetail) => {
+        setSelectedClientId(client.id);
+    }, []);
+    const closeClient = useCallback(() => {
+        setSelectedClientId(null);
+    }, []);
+    const isRecurringClient = (clientId: number) => (
+        clientActivity.get(clientId)?.isRecurring ?? false
+    );
     const loading = clientsResource.isLoading;
     const error = clientsResource.isError;
     const updatingServiceId = completeService.state.status === "pending"
@@ -672,7 +695,19 @@ const Dashboard = () => {
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span className="service-name">{client.name}</span>
+                                                    <div className="client-name-row">
+                                                        <button
+                                                            type="button"
+                                                            className="client-link"
+                                                            onClick={() => openClient(client)}
+                                                            aria-label={`Ver servicios de ${client.name}`}
+                                                        >
+                                                            {client.name}
+                                                        </button>
+                                                        <ClientTypeBadge
+                                                            isRecurring={isRecurringClient(client.id)}
+                                                        />
+                                                    </div>
                                                 </td>
                                                 <td className="dash-muted-cell">
                                                     {formatClientPhones(client)}
@@ -756,7 +791,19 @@ const Dashboard = () => {
                                                                 {getInitials(client.name)}
                                                             </span>
                                                             <div className="service-client">
-                                                                <span className="service-name">{client.name}</span>
+                                                                <div className="client-name-row">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="client-link"
+                                                                        onClick={() => openClient(client)}
+                                                                        aria-label={`Ver servicios de ${client.name}`}
+                                                                    >
+                                                                        {client.name}
+                                                                    </button>
+                                                                    <ClientTypeBadge
+                                                                        isRecurring={isRecurringClient(client.id)}
+                                                                    />
+                                                                </div>
                                                                 <span className="service-detail">
                                                                     {pet.name} · {pet.raza} · {pet.edad}
                                                                 </span>
@@ -806,19 +853,31 @@ const Dashboard = () => {
                                 ) : (
                                     <ol className="top-clients-list">
                                         {topClients.map(({client, revenue, serviceCount}, index) => (
-                                            <li className="top-client" key={client.id}>
-                                                <span className={`client-avatar client-avatar-${index % 4}`}>
-                                                    {getInitials(client.name)}
-                                                </span>
-                                                <div className="client-info">
-                                                    <span className="client-name">{client.name}</span>
-                                                    <span className="client-meta">
-                                                        {client.pets.length} {client.pets.length === 1 ? "mascota" : "mascotas"}
-                                                        {" · "}
-                                                        {serviceCount} {serviceCount === 1 ? "servicio" : "servicios"}
+                                            <li key={client.id}>
+                                                <button
+                                                    type="button"
+                                                    className="top-client top-client-button"
+                                                    onClick={() => openClient(client)}
+                                                    aria-label={`Ver servicios de ${client.name}`}
+                                                >
+                                                    <span className={`client-avatar client-avatar-${index % 4}`}>
+                                                        {getInitials(client.name)}
                                                     </span>
-                                                </div>
-                                                <span className="client-amount">{formatMoney(revenue)}</span>
+                                                    <div className="client-info">
+                                                        <div className="client-name-row">
+                                                            <span className="client-name">{client.name}</span>
+                                                            <ClientTypeBadge
+                                                                isRecurring={isRecurringClient(client.id)}
+                                                            />
+                                                        </div>
+                                                        <span className="client-meta">
+                                                            {client.pets.length} {client.pets.length === 1 ? "mascota" : "mascotas"}
+                                                            {" · "}
+                                                            {serviceCount} {serviceCount === 1 ? "servicio" : "servicios"}
+                                                        </span>
+                                                    </div>
+                                                    <span className="client-amount">{formatMoney(revenue)}</span>
+                                                </button>
                                             </li>
                                         ))}
                                     </ol>
@@ -974,7 +1033,16 @@ const Dashboard = () => {
                                                                 {pet.name} · {service.service_type}
                                                             </span>
                                                             <span className="status-service-owner">
-                                                                {client.name} · {formatClientPhones(client)}
+                                                                <button
+                                                                    type="button"
+                                                                    className="client-link"
+                                                                    onClick={() => openClient(client)}
+                                                                    aria-label={`Ver servicios de ${client.name}`}
+                                                                >
+                                                                    {client.name}
+                                                                </button>
+                                                                {" · "}
+                                                                {formatClientPhones(client)}
                                                             </span>
                                                         </div>
                                                         <span className="status-service-debt">
@@ -991,6 +1059,14 @@ const Dashboard = () => {
                     </div>
 
                 </>
+            )}
+
+            {selectedClient && selectedClientActivity && (
+                <ClientServicesDialog
+                    client={selectedClient}
+                    summary={selectedClientActivity}
+                    onClose={closeClient}
+                />
             )}
         </div>
     );

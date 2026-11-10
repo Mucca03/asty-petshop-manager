@@ -2074,6 +2074,464 @@ form > .message-banner {
     font-variant-numeric: tabular-nums;
 }
 
+/* Client type, clickable names and history dialog */
+.client-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.client-link {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 2px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text);
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    vertical-align: bottom;
+}
+
+.client-link:hover {
+    color: var(--color-accent-dark);
+    text-decoration: underline;
+    background: transparent;
+    box-shadow: none;
+}
+
+.client-link:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+}
+
+.client-type-badge {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    padding: 2px 6px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.client-type-new {
+    color: var(--badge-info-fg);
+    background: var(--badge-info-bg);
+    border-color: var(--badge-info-border);
+}
+
+.client-type-recurring {
+    color: var(--badge-success-fg);
+    background: var(--badge-success-bg);
+    border-color: var(--badge-success-border);
+}
+
+.top-client-button {
+    width: 100%;
+    padding: 5px 7px;
+    margin: -5px -7px;
+    border: 0;
+    border-radius: var(--radius-md);
+    justify-content: flex-start;
+    text-align: left;
+    background: transparent;
+    box-shadow: none;
+}
+
+.top-client-button:hover {
+    background: var(--color-surface-subtle);
+    box-shadow: none;
+}
+
+.top-client-button:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+}
+
+.client-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(24, 18, 31, 0.55);
+    backdrop-filter: blur(3px);
+}
+
+.client-dialog {
+    display: flex;
+    flex-direction: column;
+    width: min(780px, 100%);
+    max-height: min(86vh, 840px);
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-popover);
+    animation: client-dialog-in 0.16s ease-out;
+}
+
+@keyframes client-dialog-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.99);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.client-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.client-dialog-person {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.client-dialog-avatar {
+    display: grid;
+    flex: 0 0 46px;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    border-radius: var(--radius-lg);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-accent-dark);
+    background: var(--color-accent-soft);
+}
+
+.client-dialog-identity {
+    min-width: 0;
+}
+
+.client-dialog-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.client-dialog-title-row h2 {
+    overflow: hidden;
+    font-size: 21px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.client-dialog-title-row .client-type-badge {
+    padding: 3px 8px;
+    font-size: 10.5px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.client-dialog-contact {
+    margin: 4px 0 0;
+    overflow: hidden;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.client-dialog-since {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 3px 0 0;
+    font-size: 11.5px;
+    color: var(--color-muted);
+}
+
+.client-dialog-since svg {
+    width: 13px;
+    height: 13px;
+}
+
+.client-dialog-close {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    color: var(--color-muted);
+    background: transparent;
+    box-shadow: none;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.client-dialog-close:hover {
+    color: var(--color-text);
+    background: var(--color-surface-hover);
+    box-shadow: none;
+}
+
+.client-dialog-close:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+}
+
+.client-dialog-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-border);
+}
+
+.client-dialog-stat {
+    min-width: 0;
+    padding: 13px 10px;
+    background: var(--color-surface);
+}
+
+.client-dialog-stat:first-child {
+    padding-left: 0;
+}
+
+.client-dialog-stat span {
+    display: block;
+    overflow: hidden;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--color-muted);
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.client-dialog-stat strong {
+    display: block;
+    margin-top: 3px;
+    overflow: hidden;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.client-dialog-stat-warning {
+    color: var(--badge-warning-fg);
+}
+
+.client-dialog-body {
+    flex: 1;
+    min-height: 0;
+    padding: 18px 22px 20px;
+    overflow-y: auto;
+    background: var(--color-surface-subtle);
+}
+
+.client-dialog-section-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.client-dialog-section-heading h3 {
+    font-size: 14px;
+}
+
+.client-dialog-section-heading p {
+    margin: 3px 0 0;
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+.client-dialog-section-heading > span {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    color: var(--color-muted);
+    white-space: nowrap;
+}
+
+.client-dialog-pets {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.client-dialog-pet {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+}
+
+.client-dialog-pet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.client-dialog-pet-header h4 {
+    margin: 0;
+    font-size: 13.5px;
+}
+
+.client-dialog-pet-header p {
+    margin: 2px 0 0;
+    font-size: 11.5px;
+    color: var(--color-muted);
+}
+
+.client-dialog-pet-header > span {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    color: var(--color-muted);
+    white-space: nowrap;
+}
+
+.client-dialog-service-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.client-dialog-service {
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.client-dialog-service:last-child {
+    border-bottom: 0;
+}
+
+.client-dialog-service-date {
+    font-size: 11.5px;
+    color: var(--color-muted);
+    white-space: nowrap;
+}
+
+.client-dialog-service-info {
+    min-width: 0;
+}
+
+.client-dialog-service-type {
+    display: block;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.client-dialog-service-details {
+    display: block;
+    margin-top: 1px;
+    overflow: hidden;
+    font-size: 11.5px;
+    color: var(--color-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.client-dialog-service-money {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.client-dialog-service-money small {
+    display: block;
+    margin-top: 1px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--badge-warning-fg);
+}
+
+.client-dialog-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 34px 12px;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    color: var(--color-muted);
+    background: var(--color-surface);
+    text-align: center;
+}
+
+.client-dialog-empty svg {
+    width: 24px;
+    height: 24px;
+}
+
+.client-dialog-empty p {
+    margin: 0;
+    font-size: 13px;
+}
+
+.client-dialog-empty-pet {
+    padding: 12px 14px;
+    margin: 0;
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+.client-dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.client-dialog-footer > span {
+    font-size: 11.5px;
+    color: var(--color-muted);
+}
+
 /* Empty and error states */
 .dash-empty {
     display: flex;
