@@ -1,5 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { HomeIcon, PawIcon, UserPlusIcon, UsersIcon } from "./icons.tsx";
+import { useTheme } from "../hooks/useTheme.ts";
 import "../index.css"
 
 const navItems = [
@@ -11,6 +12,8 @@ const navItems = [
 ];
 
 const Navbar = () => {
+    const { theme, setTheme } = useTheme();
+
     return(
         <nav className="navbar">
             <Link to="/" className="navbar-brand" aria-label="Asty Petshop Manager, ir al panel">
@@ -43,6 +46,30 @@ const Navbar = () => {
                     );
                 })}
             </ul>
+
+            <div className="navbar-theme">
+                <span className="navbar-theme-label">Tema</span>
+                <div className="theme-options" role="group" aria-label="Tema de la interfaz">
+                    <button
+                        type="button"
+                        className={`theme-option${theme === "base" ? " active" : ""}`}
+                        onClick={() => setTheme("base")}
+                        aria-pressed={theme === "base"}
+                    >
+                        <span className="theme-swatch theme-swatch-base" aria-hidden="true"/>
+                        Base
+                    </button>
+                    <button
+                        type="button"
+                        className={`theme-option${theme === "dracula" ? " active" : ""}`}
+                        onClick={() => setTheme("dracula")}
+                        aria-pressed={theme === "dracula"}
+                    >
+                        <span className="theme-swatch theme-swatch-dracula" aria-hidden="true"/>
+                        Drácula
+                    </button>
+                </div>
+            </div>
 
             <div className="navbar-footer">
                 <span className="navbar-footer-icon">

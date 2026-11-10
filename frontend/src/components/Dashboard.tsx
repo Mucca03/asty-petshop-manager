@@ -48,7 +48,14 @@ const monthFormatter = new Intl.DateTimeFormat("es-ES", {
     month: "short",
 });
 
-const statusColors = ["#6c63ff", "#ec4899", "#0ea5e9", "#f59e0b", "#14b8a6", "#ef4444"];
+const statusColors = [
+    "var(--chart-1)",
+    "var(--chart-2)",
+    "var(--chart-3)",
+    "var(--chart-4)",
+    "var(--chart-5)",
+    "var(--chart-6)",
+];
 
 const toNumber = (value: number | string | null | undefined) => {
     const number = typeof value === "number" ? value : Number(value);
@@ -585,7 +592,7 @@ const Dashboard = () => {
                 <>
                     <section className="stats-grid" aria-label="Resumen general">
                         {stats.map(stat => (
-                            <article className="stat-card" key={stat.label}>
+                            <article className={`stat-card stat-card-${stat.tone}`} key={stat.label}>
                                 <div className="stat-top">
                                     <div>
                                         <p className="stat-label">{stat.label}</p>
