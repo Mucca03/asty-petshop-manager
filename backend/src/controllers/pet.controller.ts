@@ -1,10 +1,11 @@
 import {Request, Response } from 'express'
 import prisma from "../services/prisma"
+import {normalizePetBreed} from "../../../shared/petBreeds";
 
 export const createPet = async (req: Request, res: Response) =>{
     const {name, raza, edad, client_id} = req.body ?? {};
     const petName = typeof name === "string" ? name.trim() : "";
-    const petRaza = typeof raza === "string" ? raza.trim() : "";
+    const petRaza = normalizePetBreed(typeof raza === "string" ? raza : "");
     const petAge = typeof edad === "string" && edad.trim().length > 0 ? edad.trim() : "Adulto";
     const clientId = Number(client_id);
 

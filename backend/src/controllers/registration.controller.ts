@@ -7,6 +7,7 @@ import {
     SERVICE_STATUS_ORDER,
     serviceStatusLabel,
 } from "../../../shared/serviceLifecycle";
+import {normalizePetBreed} from "../../../shared/petBreeds";
 
 const asText = (value: unknown): string => (
     typeof value === "string" ? value.trim() : ""
@@ -28,7 +29,7 @@ export const createRegistration = async (req: Request, res: Response) => {
     const clientName = asText(client?.name);
     const phone = asText(client?.phone);
     const petName = asText(pet?.name);
-    const petRaza = asText(pet?.raza);
+    const petRaza = normalizePetBreed(asText(pet?.raza));
     const petAge = asText(pet?.edad) || "Adulto";
     const serviceType = asText(service?.service_type);
     const details = asText(service?.details);

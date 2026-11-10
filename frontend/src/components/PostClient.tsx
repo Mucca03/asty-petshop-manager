@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { createRegistration } from "../services/index.ts";
 import { getErrorMessage } from "../utils/errors.ts";
 import { useAsyncAction } from "../hooks/useAsyncAction.ts";
+import BreedAutocomplete from "./BreedAutocomplete.tsx";
 
 const TestPost = () => {
   const [hasPaid, setHasPaid] = useState<boolean>(false);
   const [petAge, setPetAge] = useState<"Cachorro" | "Adulto">("Adulto");
+  const [petBreed, setPetBreed] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const registration = useAsyncAction(createRegistration, {
     errorMessage: "Ocurrió un error al guardar el registro",
@@ -96,6 +98,7 @@ const TestPost = () => {
             form.reset();
             setHasPaid(false);
             setPetAge("Adulto");
+            setPetBreed("");
         } catch (error) {
             setValidationError(getErrorMessage(error, "Ocurrió un error al guardar el registro"));
         }
@@ -125,8 +128,14 @@ const TestPost = () => {
                 <input type="text" id="nombrePet" name="nombrePet"
                        placeholder="Escribe el nombre de la mascota" required/>
                 <p>Raza mascota</p>
-                <input type="text" id="razaPet" name="razaPet"
-                       placeholder="Escribe la raza de la mascota" required/>
+                <BreedAutocomplete
+                  id="razaPet"
+                  name="razaPet"
+                  value={petBreed}
+                  onChange={setPetBreed}
+                  placeholder="Busca o escribe la raza"
+                  required
+                />
                 <p>Edad mascota</p>
                 <select
                   id="edadPet"

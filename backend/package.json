@@ -7,7 +7,7 @@
     "start": "node dist/backend/src/index.js",
     "dev": "nodemon src/index.ts",
     "build": "node_modules/.bin/tsc",
-    "test": "node -r ts-node/register --test tests/serviceLifecycle.test.ts"
+    "test": "node -r ts-node/register --test tests/*.test.ts"
   },
   "keywords": [],
   "author": "",
