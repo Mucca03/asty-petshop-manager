@@ -15,9 +15,10 @@ Aplicación full-stack para gestionar clientes, mascotas y servicios de un petsh
 - **Ingresos** facturados en los últimos seis meses, cobrado, pendiente y ticket promedio.
 - **Servicios por estado** en gráfica de dona.
 - **Servicios recientes** y **top clientes** por facturación.
-- **Registro de clientes** junto con su mascota y primer servicio.
+- **Registro de clientes** junto con su mascota y primer servicio, en una sola transacción.
 - **Listado de clientes** con teléfonos, mascotas y servicios.
-- Estados de carga, error y listas vacías.
+- **Ciclo de vida de servicios explícito** (`Pendiente`, `En proceso`, `Completado`, `Cancelado`) validado por el backend.
+- Estados de carga, error, reintento y listas vacías consistentes en todas las vistas.
 - Diseño responsive para escritorio, tablet y móvil.
 
 ## Stack
@@ -32,21 +33,31 @@ Aplicación full-stack para gestionar clientes, mascotas y servicios de un petsh
 
 ```text
 asty-petshop-manager/
+├── shared/
+│   └── serviceLifecycle.ts    # FSM de servicios, alias y estado de pago
+├── docs/
+│   └── state-machines.md      # Inventario y diagramas de las FSM
 ├── backend/
 │   ├── prisma/
 │   │   └── schema.prisma
 │   ├── src/
 │   │   ├── controllers/       # Lógica de clientes, mascotas y servicios
+│   │   ├── middleware/        # Contrato JSON de errores
 │   │   ├── routes/            # Endpoints de Express
 │   │   ├── services/          # Cliente de Prisma
+│   │   ├── utils/             # Errores HTTP tipados
 │   │   └── index.ts           # Punto de entrada del servidor
+│   ├── tests/                 # Pruebas de la FSM compartida
 │   ├── .env.example
 │   └── package.json
 ├── frontend/
 │   ├── src/
 │   │   ├── components/        # Dashboard, navbar y páginas
+│   │   ├── domain/            # Re-export del dominio compartido
+│   │   ├── hooks/             # FSM de lectura, mutación y paginación
 │   │   ├── services/          # Llamadas a la API con Axios
 │   │   ├── types/             # Tipos de TypeScript
+│   │   ├── utils/             # Mensajes de error para la UI
 │   │   ├── App.tsx
 │   │   └── index.css
 │   ├── vite.config.ts         # Proxy de /api hacia el backend
@@ -171,6 +182,9 @@ El servidor Express expone los endpoints directamente en la raíz. En desarrollo
 | `POST` | `/clients` | Crea un cliente y sus teléfonos |
 | `POST` | `/pets` | Crea una mascota asociada a un cliente |
 | `POST` | `/services` | Crea un servicio asociado a una mascota |
+| `PATCH` | `/services/:id/status` | Transiciona el estado de un servicio |
+| `DELETE` | `/services/:id` | Elimina un servicio |
+| `POST` | `/registrations` | Crea cliente + mascota + primer servicio de forma atómica |
 
 ### Ejemplos de peticiones
 
@@ -210,12 +224,52 @@ Content-Type: application/json
   "details": "Corte completo con baño medicado",
   "price": 450,
   "paid_amount": 450,
-  "status": "Pagado",
+  "status": "completed",
   "pet_id": 1
 }
 ```
 
-> El campo `status` es texto libre. El dashboard agrupa los servicios por el valor que se envíe (por ejemplo: `Pagado`, `Pendiente`, `En proceso`).
+**Registrar cliente + mascota + primer servicio (atómico)**
+
+```http
+POST /registrations
+Content-Type: application/json
+
+{
+  "client": {
+    "name": "María González",
+    "phone": "555 120 3344"
+  },
+  "pet": {
+    "name": "Luna",
+    "raza": "Golden Retriever",
+    "edad": "Adulto"
+  },
+  "service": {
+    "service_type": "Baño y corte",
+    "details": "Corte completo con baño medicado",
+    "price": 450,
+    "paid_amount": 0
+  }
+}
+```
+
+> `status` ya no es texto libre. Acepta las claves canónicas (`pending`, `in_progress`, `completed`, `cancelled`), sus etiquetas en español (`Pendiente`, `En proceso`, `Completado`, `Cancelado`) y alias heredados (`Pagado`, `Listo`, `Agendado`, etc.). Si se omite, el servicio nace como `Pendiente`. Las filas antiguas con alias se siguen mostrando correctamente.
+
+## Máquinas de estado
+
+El proyecto modela explícitamente sus estados en lugar de repartir condicionales y regex por los componentes. El inventario completo, diagramas y reglas de cambio están en [`docs/state-machines.md`](docs/state-machines.md).
+
+| Máquina | Dónde vive | Qué resuelve |
+| --- | --- | --- |
+| Ciclo de vida del servicio | `shared/serviceLifecycle.ts` | Estados, transiciones legales, alias y tonos de UI |
+| Estado de pago (derivado) | `shared/serviceLifecycle.ts` | `unpaid`, `partial`, `paid`, `overpaid` a partir de precio/pagado |
+| Lectura remota | `frontend/src/hooks/useAsyncResource.ts` | `loading → success \| error`, reintentos y carreras |
+| Mutación remota | `frontend/src/hooks/useAsyncAction.ts` | `idle → pending → success \| error`, bloqueo anti doble clic |
+| Registro | `backend/src/controllers/registration.controller.ts` | Cliente + mascota + servicio en una sola escritura |
+| Paginación | `frontend/src/hooks/usePagination.ts` | Página siempre dentro de `[1, totalPages]` |
+
+Regla de oro: **no compares `service.status` con strings**. Usa `normalizeServiceStatus`, `getServiceStatusMeta`, `isServiceStatusOpen` o `canTransitionServiceStatus`.
 
 ## Modelo de datos
 
@@ -266,6 +320,7 @@ erDiagram
 | `npm run dev` | Inicia el servidor con nodemon y ts-node |
 | `npm run build` | Compila TypeScript a `dist/` |
 | `npm start` | Ejecuta la versión compilada |
+| `npm test` | Valida la FSM compartida de servicios |
 | `npx prisma generate` | Genera el cliente de Prisma |
 | `npx prisma db push` | Sincroniza el esquema con la base de datos |
 | `npx prisma studio` | Abre Prisma Studio para explorar los datos |
