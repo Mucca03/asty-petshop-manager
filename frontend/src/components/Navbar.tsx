@@ -3,12 +3,21 @@ import { HomeIcon, PawIcon, UserPlusIcon, UsersIcon } from "./icons.tsx";
 import { useTheme } from "../hooks/useTheme.ts";
 import "../index.css"
 
-const navItems = [
-    { to: "/", label: "Panel", icon: HomeIcon, end: true },
-    { to: "/crearCliente", label: "Nuevo registro", icon: UserPlusIcon, end: false },
-    { to: "/verCliente", label: "Clientes", icon: UsersIcon, end: false },
-    { to: "/verClienteAdmin", label: "Clientes Admin", icon: UsersIcon, end: false },
-
+const navGroups = [
+    {
+        title: "Menú",
+        items: [
+            { to: "/", label: "Panel", icon: HomeIcon, end: true },
+            { to: "/crearCliente", label: "Nuevo registro", icon: UserPlusIcon, end: false },
+            { to: "/verCliente", label: "Clientes", icon: UsersIcon, end: false },
+        ],
+    },
+    {
+        title: "Admin",
+        items: [
+            { to: "/verClienteAdmin", label: "Clientes Admin", icon: UsersIcon, end: false },
+        ],
+    },
 ];
 
 const Navbar = () => {
@@ -26,26 +35,30 @@ const Navbar = () => {
                 </span>
             </Link>
 
-            <p className="navbar-section-title">Menú</p>
+            {navGroups.map(group => (
+                <div className="navbar-group" key={group.title}>
+                    <p className="navbar-section-title">{group.title}</p>
 
-            <ul className="navbar-links">
-                {navItems.map(item => {
-                    const Icon = item.icon;
+                    <ul className="navbar-links">
+                        {group.items.map(item => {
+                            const Icon = item.icon;
 
-                    return (
-                        <li className="item-list" key={item.to}>
-                            <NavLink
-                                to={item.to}
-                                end={item.end}
-                                className={({isActive}) => isActive ? "active" : ""}
-                            >
-                                <Icon/>
-                                <span>{item.label}</span>
-                            </NavLink>
-                        </li>
-                    );
-                })}
-            </ul>
+                            return (
+                                <li className="item-list" key={item.to}>
+                                    <NavLink
+                                        to={item.to}
+                                        end={item.end}
+                                        className={({isActive}) => isActive ? "active" : ""}
+                                    >
+                                        <Icon/>
+                                        <span>{item.label}</span>
+                                    </NavLink>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            ))}
 
             <div className="navbar-theme">
                 <span className="navbar-theme-label">Tema</span>
