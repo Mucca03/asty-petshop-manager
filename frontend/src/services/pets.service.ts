@@ -9,7 +9,6 @@ const createPet = async (name: string, raza: string, edad: string, clientId: num
             edad: edad,
             client_id: clientId
         });
-        console.log('Pet added:', data);
 
         return data
 };

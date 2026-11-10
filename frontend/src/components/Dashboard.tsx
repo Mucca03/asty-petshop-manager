@@ -1,9 +1,17 @@
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useMemo, useState} from "react";
 import type {ReactNode} from "react";
 import {Link} from "react-router-dom";
 import {getClients, updateServiceStatus} from "../services/index.ts";
 import type {ClientDetail, PetRecord, ServiceRecord} from "../types/ClientDetail.ts";
-import {getServiceDebt} from "../utils/serviceDebt.ts";
+import {
+    getServiceDebt,
+    getServiceStatusMeta,
+    isServiceStatusCompleted,
+    isServiceStatusOpen,
+    SERVICE_STATUS,
+} from "../domain/serviceLifecycle.ts";
+import {useAsyncAction} from "../hooks/useAsyncAction.ts";
+import {useAsyncResource} from "../hooks/useAsyncResource.ts";
 import {
     AlertTriangleIcon,
     ArrowUpRightIcon,
@@ -23,8 +31,6 @@ interface ServiceRow {
     pet: PetRecord;
     client: ClientDetail;
 }
-
-type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";
 
 const currencyFormatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
@@ -66,28 +72,6 @@ const getInitials = (name: string) => {
     }
 
     return words.slice(0, 2).map(word => word[0]).join("").toUpperCase();
-};
-
-const getStatusTone = (status: string): StatusTone => {
-    const value = status.toLowerCase();
-
-    if (/(pagad|complet|finaliz|entregad|listo)/.test(value)) {
-        return "success";
-    }
-
-    if (/(cancel|vencid|rechaz|atras|adeud)/.test(value)) {
-        return "danger";
-    }
-
-    if (/(pend|proceso|agend|program|espera|abono)/.test(value)) {
-        return "warning";
-    }
-
-    if (/(activo|nuevo)/.test(value)) {
-        return "info";
-    }
-
-    return "neutral";
 };
 
 const getStatusColor = (index: number) => (
@@ -169,14 +153,6 @@ const getPeriodRange = (period: DashboardPeriod, customDate: string) => {
 
 const formatRangeDate = (date: Date) => (
     rangeDateFormatter.format(date).replace(/\./g, "")
-);
-
-const isPendingStatus = (status: string | null | undefined) => (
-    /pend/i.test(status ?? "")
-);
-
-const isCompletedStatus = (status: string | null | undefined) => (
-    /(pagad|complet|finaliz|entregad|listo)/i.test(status ?? "")
 );
 
 const formatClientPhones = (client: ClientDetail) => {
@@ -280,35 +256,35 @@ const DashboardSkeleton = () => (
 );
 
 const Dashboard = () => {
-    const [clients, setClients] = useState<ClientDetail[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const clientsResource = useAsyncResource(getClients, {
+        errorMessage: "No pudimos cargar el panel.",
+    });
+    const completeService = useAsyncAction(
+        ({service}: ServiceRow) => updateServiceStatus(
+            service.id,
+            SERVICE_STATUS.completed,
+            toNumber(service.price),
+        ),
+        {errorMessage: "No se pudo completar el servicio. Inténtalo de nuevo."},
+    );
     const [period, setPeriod] = useState<DashboardPeriod>("today");
     const [customDate, setCustomDate] = useState(() => toDateInputValue(new Date()));
     const [showRevenue, setShowRevenue] = useState(true);
-    const [updatingServiceId, setUpdatingServiceId] = useState<number | null>(null);
-    const [actionMessage, setActionMessage] = useState<{
-        type: "success" | "error";
-        text: string;
-    } | null>(null);
 
-    const loadDashboard = useCallback(async () => {
-        setLoading(true);
-        setError(false);
-
-        try {
-            const data = await getClients();
-            setClients(Array.isArray(data) ? data : []);
-        } catch {
-            setError(true);
-        } finally {
-            setLoading(false);
+    const clients = useMemo(() => clientsResource.data ?? [], [clientsResource.data]);
+    const loading = clientsResource.isLoading;
+    const error = clientsResource.isError;
+    const updatingServiceId = completeService.state.status === "pending"
+        ? completeService.state.args[0].service.id
+        : null;
+    const actionMessage = completeService.state.status === "success"
+        ? {
+            type: "success" as const,
+            text: `Servicio de ${completeService.state.args[0].pet.name} completado. Abono registrado: ${formatMoney(toNumber(completeService.state.args[0].service.price))}.`,
         }
-    }, []);
-
-    useEffect(() => {
-        void loadDashboard();
-    }, [loadDashboard]);
+        : completeService.state.status === "error"
+            ? {type: "error" as const, text: completeService.state.error}
+            : null;
 
     const services = useMemo<ServiceRow[]>(() => (
         clients.flatMap(client => (
@@ -348,10 +324,10 @@ const Dashboard = () => {
         const pending = Math.max(revenue - collected, 0);
         const averageTicket = totalServices > 0 ? revenue / totalServices : 0;
         const pendingServiceCount = filteredServices.filter(
-            ({service}) => isPendingStatus(service.status),
+            ({service}) => isServiceStatusOpen(service.status),
         ).length;
         const completedServiceCount = filteredServices.filter(
-            ({service}) => isCompletedStatus(service.status),
+            ({service}) => isServiceStatusCompleted(service.status),
         ).length;
 
         return {
@@ -408,7 +384,7 @@ const Dashboard = () => {
 
     const pendingServices = useMemo<ServiceRow[]>(() => (
         filteredServices
-            .filter(({service}) => isPendingStatus(service.status))
+            .filter(({service}) => isServiceStatusOpen(service.status))
             .sort((a, b) => {
                 const debtA = getServiceDebt(a.service.price, a.service.paid_amount);
                 const debtB = getServiceDebt(b.service.price, b.service.paid_amount);
@@ -424,58 +400,38 @@ const Dashboard = () => {
         0,
     );
 
-    const handleCompletePendingService = async (
-        service: ServiceRecord,
-        pet: PetRecord,
-    ) => {
-        if (updatingServiceId !== null) {
+    const handleCompletePendingService = async (row: ServiceRow) => {
+        const updated = await completeService.run(row);
+
+        if (!updated) {
             return;
         }
 
-        setUpdatingServiceId(service.id);
-        setActionMessage(null);
-
-        try {
-            await updateServiceStatus(service.id, "Completado", toNumber(service.price));
-
-            setClients(currentClients => currentClients.map(client => ({
-                ...client,
-                pets: client.pets.map(currentPet => ({
-                    ...currentPet,
-                    services: currentPet.services.map(currentService => (
-                        currentService.id === service.id
-                            ? {
-                                ...currentService,
-                                status: "Completado",
-                                paid_amount: service.price,
-                            }
-                            : currentService
-                    )),
-                })),
-            })));
-
-            setActionMessage({
-                type: "success",
-                text: `Servicio de ${pet.name} completado. Abono registrado: ${formatMoney(toNumber(service.price))}.`,
-            });
-        } catch {
-            setActionMessage({
-                type: "error",
-                text: "No se pudo completar el servicio. Inténtalo de nuevo.",
-            });
-        } finally {
-            setUpdatingServiceId(null);
-        }
+        clientsResource.setData(currentClients => currentClients.map(client => ({
+            ...client,
+            pets: client.pets.map(currentPet => ({
+                ...currentPet,
+                services: currentPet.services.map(currentService => (
+                    currentService.id === row.service.id
+                        ? {
+                            ...currentService,
+                            status: updated.status,
+                            paid_amount: updated.paid_amount ?? row.service.price,
+                        }
+                        : currentService
+                )),
+            })),
+        })));
     };
 
     const statusServices = useMemo<ServiceRow[]>(() => (
         filteredServices
             .filter(({service}) => (
-                isPendingStatus(service.status) || isCompletedStatus(service.status)
+                isServiceStatusOpen(service.status) || isServiceStatusCompleted(service.status)
             ))
             .sort((a, b) => {
-                const pendingA = isPendingStatus(a.service.status) ? 1 : 0;
-                const pendingB = isPendingStatus(b.service.status) ? 1 : 0;
+                const pendingA = isServiceStatusOpen(a.service.status) ? 1 : 0;
+                const pendingB = isServiceStatusOpen(b.service.status) ? 1 : 0;
                 const dateA = new Date(a.service.date).getTime() || 0;
                 const dateB = new Date(b.service.date).getTime() || 0;
                 return pendingB - pendingA || dateB - dateA || b.service.id - a.service.id;
@@ -491,7 +447,7 @@ const Dashboard = () => {
         const counts = new Map<string, number>();
 
         statusServices.forEach(({service}) => {
-            const status = service.status?.trim() || "Sin estado";
+            const status = getServiceStatusMeta(service.status).label;
             counts.set(status, (counts.get(status) ?? 0) + 1);
         });
 
@@ -617,8 +573,8 @@ const Dashboard = () => {
                 <section className="dash-card dash-error" role="alert">
                     <span className="dash-error-icon"><AlertTriangleIcon/></span>
                     <h2>No pudimos cargar el panel</h2>
-                    <p>Revisa que el servidor esté disponible e inténtalo de nuevo.</p>
-                    <button type="button" className="dash-btn dash-btn-primary" onClick={() => void loadDashboard()}>
+                    <p>{clientsResource.error ?? "Revisa que el servidor esté disponible e inténtalo de nuevo."}</p>
+                    <button type="button" className="dash-btn dash-btn-primary" onClick={() => void clientsResource.reload()}>
                         <RefreshIcon/>
                         Reintentar
                     </button>
@@ -687,7 +643,9 @@ const Dashboard = () => {
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {pendingServices.map(({service, pet, client}) => {
+                                    {pendingServices.map((row) => {
+                                        const {service, pet, client} = row;
+                                        const status = getServiceStatusMeta(service.status);
                                         const isUpdating = updatingServiceId === service.id;
                                         const isBusy = updatingServiceId !== null;
 
@@ -724,13 +682,13 @@ const Dashboard = () => {
                                                 <td>
                                                     <button
                                                         type="button"
-                                                        className="status-badge status-badge-warning pending-complete-button"
-                                                        onClick={() => void handleCompletePendingService(service, pet)}
+                                                        className={`status-badge status-badge-${status.tone} pending-complete-button`}
+                                                        onClick={() => void handleCompletePendingService(row)}
                                                         disabled={isBusy}
                                                         title="Clic para completar y registrar el abono"
                                                         aria-label={`Marcar como completado y pagado el servicio de ${pet.name}`}
                                                     >
-                                                        {isUpdating ? "Guardando…" : "Pendiente"}
+                                                        {isUpdating ? "Guardando…" : status.label}
                                                     </button>
                                                 </td>
                                             </tr>
@@ -781,7 +739,7 @@ const Dashboard = () => {
                                         </thead>
                                         <tbody>
                                         {recentServices.map(({service, pet, client}) => {
-                                            const tone = getStatusTone(service.status);
+                                            const status = getServiceStatusMeta(service.status);
 
                                             return (
                                                 <tr key={service.id}>
@@ -806,8 +764,8 @@ const Dashboard = () => {
                                                     </td>
                                                     <td className="dash-muted-cell">{formatShortDate(service.date)}</td>
                                                     <td>
-                                                        <span className={`status-badge status-badge-${tone}`}>
-                                                            {service.status || "Sin estado"}
+                                                        <span className={`status-badge status-badge-${status.tone}`}>
+                                                            {status.label}
                                                         </span>
                                                     </td>
                                                     <td className="price-cell">{formatMoney(toNumber(service.price))}</td>
@@ -996,13 +954,13 @@ const Dashboard = () => {
                                         </p>
                                         <ul className="status-services-list">
                                             {statusServiceDetails.map(({service, pet, client}) => {
-                                                const tone = getStatusTone(service.status);
+                                                const status = getServiceStatusMeta(service.status);
                                                 const debt = getServiceDebt(service.price, service.paid_amount);
 
                                                 return (
                                                     <li className="status-service-item" key={service.id}>
-                                                        <span className={`status-badge status-badge-${tone}`}>
-                                                            {service.status || "Sin estado"}
+                                                        <span className={`status-badge status-badge-${status.tone}`}>
+                                                            {status.label}
                                                         </span>
                                                         <div className="status-service-info">
                                                             <span className="status-service-pet">

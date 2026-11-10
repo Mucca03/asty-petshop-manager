@@ -1,5 +1,6 @@
 import axios from "axios";
 import type {Service} from "../types/Service.ts";
+import type {ServiceStatus} from "../domain/serviceLifecycle.ts";
 
 const createService = async (service: string, details: string,
                          price: number, paid:number, status:string,
@@ -12,12 +13,15 @@ const createService = async (service: string, details: string,
         status: status,
         pet_id: petId
     });
-    console.log('Service added:', data);
 
     return data
 };
 
-const updateServiceStatus = async (serviceId: number, status: string, paidAmount?: number): Promise<Service> => {
+const updateServiceStatus = async (
+    serviceId: number,
+    status: ServiceStatus,
+    paidAmount?: number,
+): Promise<Service> => {
     const {data} = await axios.patch(`/api/services/${serviceId}/status`, {
         status: status,
         ...(paidAmount !== undefined ? { paid_amount: paidAmount } : {}),
@@ -26,4 +30,10 @@ const updateServiceStatus = async (serviceId: number, status: string, paidAmount
     return data;
 };
 
-export {createService, updateServiceStatus};
+const deleteService = async (serviceId: number): Promise<Service> => {
+    const {data} = await axios.delete(`/api/services/${serviceId}`);
+
+    return data;
+};
+
+export {createService, updateServiceStatus, deleteService};

@@ -1,5 +1,5 @@
-export const getServiceDebt = (price: number | string, paidAmount: number | string | null | undefined) => {
-    const priceValue = Number(price) || 0;
-    const paidValue = Number(paidAmount) || 0;
-    return Math.max(priceValue - paidValue, 0);
-};
+/**
+ * Backwards-compatible import location. The implementation lives in the
+ * shared service lifecycle module so the backend and frontend always agree.
+ */
+export {getServiceDebt} from "../domain/serviceLifecycle.ts";
