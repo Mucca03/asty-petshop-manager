@@ -44,9 +44,9 @@ const TestPost = () => {
             const paidAmount = hasPaid ? numberValue("paidAmount") : 0;
 
             const requiredFields: Array<[string, string]> = [
+              ["nombrePet", "El nombre de la mascota es obligatorio"],
               ["nombre", "El nombre del cliente es obligatorio"],
               ["telefono", "El teléfono del cliente es obligatorio"],
-              ["nombrePet", "El nombre de la mascota es obligatorio"],
               ["razaPet", "La raza de la mascota es obligatoria"],
               ["serviceType", "El tipo de servicio es obligatorio"],
             ];
@@ -118,15 +118,15 @@ const TestPost = () => {
                   </div>
                 )}
 
+                <p>Nombre mascota</p>
+                <input type="text" id="nombrePet" name="nombrePet"
+                       placeholder="Escribe el nombre de la mascota" required/>
                 <p>Nombre cliente</p>
                 <input type="text" id="nombre" name="nombre"
                        placeholder="Escribe tu nombre" required/>
                 <p>Telefono cliente</p>
                 <input type="number" id="telefono" name="telefono"
                        placeholder="Escribe tu telefono" required/>
-                <p>Nombre mascota</p>
-                <input type="text" id="nombrePet" name="nombrePet"
-                       placeholder="Escribe el nombre de la mascota" required/>
                 <p>Raza mascota</p>
                 <BreedAutocomplete
                   id="razaPet"

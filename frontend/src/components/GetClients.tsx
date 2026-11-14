@@ -1,12 +1,47 @@
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
 import {getClients, updateServiceStatus} from "../services/index.ts";
 import {getServiceDebt, getServiceStatusMeta, SERVICE_STATUS} from "../domain/serviceLifecycle.ts";
 import {useAsyncAction} from "../hooks/useAsyncAction.ts";
 import {useAsyncResource} from "../hooks/useAsyncResource.ts";
 import {usePagination} from "../hooks/usePagination.ts";
 import type {ServiceRow} from "../types/ServiceRow.ts";
+import {SearchIcon} from "./icons.tsx";
 
 const PAGE_SIZE = 30;
+
+const normalizeSearchText = (value: string): string => (
+    value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+);
+
+const getRowSearchText = (row: ServiceRow): string => {
+    const {client, phone, pet, service} = row;
+    const date = new Date(service.date);
+    const dateValues = Number.isNaN(date.getTime())
+        ? [service.date]
+        : [
+            date.toLocaleDateString(),
+            date.toLocaleDateString("es-MX"),
+            date.toLocaleDateString("es-MX", {day: "2-digit", month: "2-digit", year: "numeric"}),
+            date.toLocaleDateString("es-MX", {day: "numeric", month: "long", year: "numeric"}),
+            `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+            date.toISOString().slice(0, 10),
+        ];
+
+    return normalizeSearchText([
+        client.name,
+        phone.phone,
+        phone.phone.replace(/\D/g, ""),
+        pet.name,
+        pet.raza,
+        pet.edad,
+        service.service_type,
+        service.details ?? "",
+        ...dateValues,
+    ].join(" "));
+};
 
 const TestGetClients = () => {
     const clientsResource = useAsyncResource(getClients, {
@@ -22,6 +57,7 @@ const TestGetClients = () => {
     );
 
     const clients = useMemo(() => clientsResource.data ?? [], [clientsResource.data]);
+    const [query, setQuery] = useState("");
     const updatingServiceId = completeService.state.status === "pending"
         ? completeService.state.args[0].service.id
         : null;
@@ -64,8 +100,33 @@ const TestGetClients = () => {
         })
     ), [clients]);
 
-    const pagination = usePagination(rows.length, PAGE_SIZE);
-    const visibleRows = rows.slice(pagination.startIndex, pagination.endIndex);
+    const normalizedQuery = normalizeSearchText(query).trim();
+    const searchableRows = useMemo(
+        () => rows.map(row => ({row, searchText: getRowSearchText(row)})),
+        [rows],
+    );
+    const filteredRows = useMemo(() => {
+        const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+
+        if (tokens.length === 0) {
+            return rows;
+        }
+
+        return searchableRows
+            .filter(({searchText}) => tokens.every(token => searchText.includes(token)))
+            .map(({row}) => row);
+    }, [rows, searchableRows, normalizedQuery]);
+
+    const pagination = usePagination(filteredRows.length, PAGE_SIZE);
+    const visibleRows = filteredRows.slice(pagination.startIndex, pagination.endIndex);
+
+    const handleQueryChange = (value: string) => {
+        setQuery(value);
+
+        if (pagination.page !== 1) {
+            pagination.reset();
+        }
+    };
 
     const actionMessage = completeService.state.status === "success"
         ? {type: "success" as const, text: "Servicio completado y pago registrado."}
@@ -107,6 +168,50 @@ const TestGetClients = () => {
 
             {!clientsResource.isLoading && !clientsResource.isError && rows.length > 0 && (
                 <>
+                    <div className="table-toolbar">
+                        <div className="table-search">
+                            <SearchIcon/>
+                            <input
+                                id="services-search"
+                                type="search"
+                                className="table-search-input"
+                                value={query}
+                                onChange={event => handleQueryChange(event.target.value)}
+                                placeholder="Buscar por cliente, teléfono, mascota, raza, servicio o fecha"
+                                aria-label="Buscar servicios"
+                                autoComplete="off"
+                            />
+                            {query.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="table-search-clear"
+                                    onClick={() => handleQueryChange("")}
+                                    aria-label="Limpiar búsqueda"
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+                        <span className="table-toolbar-count" aria-live="polite">
+                            {normalizedQuery.length > 0
+                                ? `${filteredRows.length} de ${rows.length} servicios`
+                                : `${rows.length} servicios`}
+                        </span>
+                    </div>
+
+                    {filteredRows.length === 0 ? (
+                        <div className="table-state table-search-empty">
+                            <p>No encontramos servicios que coincidan con “{query.trim()}”.</p>
+                            <button
+                                type="button"
+                                className="pagination-btn"
+                                onClick={() => handleQueryChange("")}
+                            >
+                                Limpiar búsqueda
+                            </button>
+                        </div>
+                    ) : (
+                        <>
                     <div className="table-scroll">
                         <table className="services-table">
                             <thead>
@@ -176,7 +281,7 @@ const TestGetClients = () => {
 
                     <div className="pagination">
                         <span className="pagination-summary">
-                            Mostrando {pagination.startIndex + 1}-{pagination.endIndex} de {rows.length} servicios
+                            Mostrando {pagination.startIndex + 1}-{pagination.endIndex} de {filteredRows.length} servicios
                         </span>
                         <div className="pagination-controls">
                             <button
@@ -198,6 +303,8 @@ const TestGetClients = () => {
                             </button>
                         </div>
                     </div>
+                        </>
+                    )}
                 </>
             )}
         </div>

@@ -110,6 +110,13 @@ const AlertTriangleIcon = (props: IconProps) => (
     </svg>
 );
 
+const SearchIcon = (props: IconProps) => (
+    <svg {...iconProps} {...props}>
+        <circle cx="11" cy="11" r="7"/>
+        <path d="m20 20-3.5-3.5"/>
+    </svg>
+);
+
 export {
     HomeIcon,
     UsersIcon,
@@ -123,4 +130,5 @@ export {
     TrendingUpIcon,
     RefreshIcon,
     AlertTriangleIcon,
+    SearchIcon,
 };
